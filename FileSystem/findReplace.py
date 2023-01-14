@@ -1,26 +1,28 @@
-from .linkList import MyLinkList
+from .MyLinkList import MyLinkList
 
-"""
-基于自己实现的linkedList
-完成了LRU替换算法
-"""
 
 class FindReplace:
-    def __init__(self, cap: int) -> None:
-        self.capacity = cap
-        self.linkedList = MyLinkList(cap, 1)
-        for idx in range(0, self.capacity):
-            self.linkedList.insert_first(0, self.capacity - 1 - idx)
-        
-    def find(self):
-        idx = self.linkedList.get_first(0)
-        self.linkedList.delete(idx)
-        self.linkedList.insert(0, idx)
-        return idx
+    def __init__(self, cap: int):
+        self.CAP = cap
+        self.list = MyLinkList(cap, 1)
+        num = self.CAP - 1
+        for item in range(num, -1, -1):
+            # print("item", item)
+            self.list.insertFirst(0, item)
 
-    def access(self, idx: int):
-        self.linkedList.insert(0, idx)
-    
-    def free(self, idx: int):
-        self.linkedList.insert_first(0, idx)
-        
+        # print(self.list.next, self.list.prev)
+
+        # for i in range(10):
+        #     print("findreplace", i, self.find())
+
+    def access(self, index: int):
+        self.list.insert(0, index)
+
+    def free(self, index: int):
+        self.list.insertFirst(0, index)
+
+    def find(self):
+        index = self.list.getFirst(0)
+        self.list.delete(index)
+        self.list.insert(0, index)
+        return index
