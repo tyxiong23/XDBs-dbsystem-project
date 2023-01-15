@@ -1,7 +1,7 @@
 from .index_handler import IndexHandler
 from abc import abstractmethod
 import numpy as np
-from utils.macro import *
+from utils.constants import *
 
 
 class BasicNode:

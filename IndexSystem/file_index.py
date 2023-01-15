@@ -4,7 +4,7 @@ from .basic_node import BasicNode
 from .index_handler import IndexHandler
 from RecordSystem.basicClass.rid import RID
 import numpy as np
-from utils.macro import *
+from utils.constants import *
 from typing import List
 
 

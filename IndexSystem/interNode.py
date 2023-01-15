@@ -1,7 +1,7 @@
 from .basic_node import BasicNode
 from .leafNode import LeafNode
 from .index_handler import IndexHandler
-from utils.macro import *
+from utils.constants import *
 # from ..FileSystem import macro
 import numpy as np
 

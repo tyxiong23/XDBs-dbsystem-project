@@ -1,7 +1,7 @@
 from .basic_node import BasicNode
 from .index_handler import IndexHandler
 from RecordSystem.basicClass.rid import RID
-from utils.macro import *
+from utils.constants import *
 import numpy as np
 
 

@@ -14,7 +14,7 @@ from antlr_SQLparser.SQLLexer import SQLLexer
 from MetaSystem.basicClass.Table import TableInfo
 from MetaSystem.basicClass.Column import ColumnInfo
 from OutputSystem.TablePrinter import *
-from utils.macro import *
+from utils.constants import *
 from Exceptions.exception import *
 from pathlib import Path
 from .basicClass.Join import Join

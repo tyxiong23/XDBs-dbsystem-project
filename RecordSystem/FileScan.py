@@ -1,7 +1,7 @@
 
 from .FileHandler import FileHandler
 from .basicClass.rid import RID
-from utils.macro import *
+from utils.constants import *
 import numpy as np
 
 class FileScan:

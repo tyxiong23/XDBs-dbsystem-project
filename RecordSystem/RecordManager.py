@@ -2,7 +2,7 @@ from FileSystem.bufPageManager import BufPageManager
 from .FileHandler import FileHandler
 
 from Exceptions.exception import *
-from utils.macro import *
+from utils.constants import *
 
 from json import dumps, loads
 import numpy as np

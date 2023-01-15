@@ -1,7 +1,7 @@
 import numpy as np
 
 from FileSystem.bufPageManager import BufPageManager
-from utils.macro import *
+from utils.constants import *
 import os
 
 class IndexHandler:

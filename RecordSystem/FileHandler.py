@@ -1,4 +1,4 @@
-from utils.macro import *
+from utils.constants import *
 from .basicClass.rid import RID
 from .basicClass.record import Record
 
