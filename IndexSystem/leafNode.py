@@ -8,11 +8,11 @@ import numpy as np
 
 
 class LeafNode(BasicNode):
-    def __init__(self, page, father, left, right, child_key_list, child_list, index_handler: IndexHandler, depth: int = 0):
+    def __init__(self, page, father, left, right, child_keys, child_list, index_handler: IndexHandler, depth: int = 0):
         super(LeafNode, self).__init__(index_handler)
         self._node_type = 1
 
-        self.child_keys = child_key_list
+        self.child_keys = child_keys
         self.child_vals = child_list
 
         self.page_id = page
@@ -22,7 +22,7 @@ class LeafNode(BasicNode):
         self.depth = depth
 
     def insert(self, key, value: RID):
-        upper = self.upper_bound(key=key)
+        upper = self.upper_bound(key)
         if upper is None:
             self.child_keys.insert(0, key)
             self.child_vals.insert(0, value)
@@ -32,8 +32,8 @@ class LeafNode(BasicNode):
         return None
 
     def remove(self, key, value: RID):
-        lower = self.lower_bound(key=key)
-        cursor = upper = self.upper_bound(key=key)
+        lower = self.lower_bound(key)
+        cursor = upper = self.upper_bound(key)
         len_key_list = len(self.child_keys)
         if upper < len_key_list:
             upper = upper + 1
@@ -79,16 +79,16 @@ class LeafNode(BasicNode):
         assert array.size == 8192
         return array
 
-    def range(self, lo, hi):  
-        # print(f"LeafRange {self.page, self.depth}, {lo, hi}, {self.child_key_list[-1]}")      
-        if self.child_keys[-1] < lo:
+    def range(self, low, high):  
+        # print(f"LeafRange {self.page, self.depth}, {lo, hi}, {self.child_keys[-1]}")      
+        if self.child_keys[-1] < low:
             return []
-        elif self.child_key_list[0] > hi:
+        elif self.child_keys[0] > high:
             return []
-        lower = self.lower_bound(key=lo)
-        upper = self.upper_bound(key=hi)
+        lower = self.lower_bound(low)
+        upper = self.upper_bound(high)
         # print(lo, hi, self.child_keys[lower:upper])
-        # print(f"leaf {self.depth}: l-u lid{lower} uid{upper}  len{len(self.child_key_list)-1} {self.child_key_list[lower], lo, hi, self.child_key_list[-1]}")
+        # print(f"leaf {self.depth}: l-u lid{lower} uid{upper}  len{len(self.child_keys)-1} {self.child_keys[lower], lo, hi, self.child_keys[-1]}")
         
         return self.child_vals[lower:upper]
 
@@ -101,7 +101,7 @@ class LeafNode(BasicNode):
             
     def search(self, key):
         index = self.lower_bound(key=key)
-        if index == len(self.child_key_list):
+        if index == len(self.child_keys):
             return None
         elif self.child_keys[index] == key:
             return self.child_vals[index]

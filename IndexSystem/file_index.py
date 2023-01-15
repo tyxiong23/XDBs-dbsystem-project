@@ -55,6 +55,7 @@ class FileIndex:
         return self._root_node.search(key)
 
     def range(self, low, high):
+        print(f"FileIndex::range {low, high}")
         return self._root_node.range(low, high)
 
     def pour(self):
@@ -71,21 +72,21 @@ class FileIndex:
             self._handler.put_page(page_id=page_id, data=data)
         return None
 
-    def build_node(self, page_id):
+    def build_node(self, page_id, depth=0):
         # print("BUILD NODE", page_id)
         self._is_modified = True
         page_data: np.ndarray = self._handler.get_page(page_id=page_id)
         page_data.dtype = np.int64
         node_type = page_data[0]
         if node_type == 0:
-            res: InterNode = self.build_inter_node(page_id=page_id, data=page_data)
+            res: InterNode = self.build_inter_node(page_id, page_data, depth=depth)
         elif node_type == 1:
-            res: LeafNode = self.build_leaf_node(page_id=page_id, data=page_data)
+            res: LeafNode = self.build_leaf_node(page_id, page_data, depth=depth)
         else:
             raise ValueError('node_type error!')
         return res
 
-    def build_leaf_node(self, page_id, data: np.ndarray):
+    def build_leaf_node(self, page_id, data: np.ndarray, depth):
         data.dtype = np.int64
         child_num = data[4]
         child_keys, child_rids = [], []
@@ -93,11 +94,11 @@ class FileIndex:
             child_keys.append(data[5 + 3 * i])
             rid = RID(int(data[6 + 3 * i]), int(data[7 + 3 * i]))
             child_rids.append(rid)
-        leaf_node = LeafNode(page=page_id, father=data[1], left=data[2], right=data[3], child_key_list=child_keys,
-                             child_list=child_rids, index_handler=self._handler)
+        leaf_node = LeafNode(page_id, data[1], data[2], data[3], child_keys,
+                             child_rids, self._handler, depth)
         return leaf_node
 
-    def build_inter_node(self, page_id, data: np.ndarray):
+    def build_inter_node(self, page_id, data: np.ndarray, depth):
         data.dtype = np.int64
         child_num = data[2]
         child_key_list = []
@@ -105,8 +106,8 @@ class FileIndex:
         for i in range(child_num):
             child_key_list.append(data[3 + 2 * i])
             child_node_list.append(self.build_node(data[4 + 2 * i]))
-        nonleaf_node = InterNode(page=page_id, father=data[1], child_key_list=child_key_list,
-                                    child_list=child_node_list, index_handler=self._handler)
+        nonleaf_node = InterNode(page_id, data[1], child_key_list,
+                                    child_node_list, self._handler, depth)
         return nonleaf_node
 
     def take(self):
