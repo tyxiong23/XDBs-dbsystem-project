@@ -211,7 +211,7 @@ class SystemManger:
     def tb_create(self, table: TableInfo):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        metaHandler.insertTable(table)
+        metaHandler.tb_insert(table)
         tablePath = self.tb_path(table.name)
         self.RM.createFile(tablePath, table.rowSize)
         return
@@ -219,7 +219,7 @@ class SystemManger:
     def tb_delete(self, table: str):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         for col in tableInfo.columnMap:
             self.remove_clo_check(table, col)
         metaHandler.tb_delete(table)
@@ -230,11 +230,11 @@ class SystemManger:
     def tb_info(self, table: str):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        return metaHandler, metaHandler.collectTableInfo(table)
+        return metaHandler, metaHandler.tb_info(table)
 
     def tb_show(self, table: str):
         return LookupOutput(('Field', 'Type', 'Null', 'Key', 'Default', 'Extra')
-                            , self.tb_info(table)[1].describe()
+                            , self.tb_info(table)[1].desc()
                             )
 
     def tb_rename(self, src: str, dst: str):
@@ -258,12 +258,12 @@ class SystemManger:
             print(f"IM create_index(already) {table, col}")
             metaHandler.idx_create(index, table, col)
             return
-        if tableInfo.getColumnIndex(col) is not None:
-            colIndex = tableInfo.getColumnIndex(col)
+        if tableInfo.index_get(col) is not None:
+            colIndex = tableInfo.index_get(col)
             for record in FileScan(self.RM.openFile(self.tb_path(table))):
-                recordData = tableInfo.loadRecord(record)
+                recordData = tableInfo.record_load(record)
                 indexFile.insert(recordData[colIndex], record.rid)
-            metaHandler.createIndex(index, table, col)
+            metaHandler.idx_create(index, table, col)
         else:
             print("OH NO")
             raise ColumnNotExist(col + "doesn't exist")
@@ -271,8 +271,8 @@ class SystemManger:
     def idx_delete(self, index: str):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        table, col = metaHandler.databaseInfo.getIndex(index)
-        metaHandler.collectTableInfo(table).index.pop(col)
+        table, col = metaHandler.databaseInfo.idx_get(index)
+        metaHandler.tb_info(table).index.pop(col)
         metaHandler.idx_delete(index)
         self.metaHandlers.pop(self.inUse).shut_down()
         return
@@ -280,7 +280,7 @@ class SystemManger:
     def idx_search(self, table: str, limits: tuple):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         functions = self.cond_setup(table, limits, metaHandler)
         index_filter = self.idx_examine(table, limits)
         fileHandler: FileHandler = self.RM.openFile(self.tb_path(table))
@@ -290,13 +290,13 @@ class SystemManger:
         if index_filter is not None: # is not None:
             iterator = map(fileHandler.getRecord, index_filter)
             for record in iterator:
-                valTuple = tableInfo.loadRecord(record)
+                valTuple = tableInfo.record_load(record)
                 if all(map(lambda fun: fun(valTuple), functions)):
                     records.append(record)
                     data.append(valTuple)
         else:
             for record in FileScan(fileHandler):
-                valTuple = tableInfo.loadRecord(record)
+                valTuple = tableInfo.record_load(record)
                 old_valTuple = valTuple
                 if all(map(lambda fun: fun(valTuple), functions)):
                     records.append(record)
@@ -308,12 +308,12 @@ class SystemManger:
     def idx_insert_handle(self, table: str, data: tuple, rid: RID):
         self.exmineIfActive()
         metaHandler:MetaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         for col in tableInfo.index:
             old_root_id = tableInfo.index[col]
-            if data[tableInfo.getColumnIndex(col)] is not None:
+            if data[tableInfo.index_get(col)] is not None:
                 index = self.IM.start_index(self.inUse, table, old_root_id)
-                ret = index.insert(data[tableInfo.getColumnIndex(col)], rid)
+                ret = index.insert(data[tableInfo.index_get(col)], rid)
             else:
                 index = self.IM.start_index(self.inUse, table, old_root_id)
                 ret = index.insert(NULL_VALUE, rid)
@@ -321,17 +321,17 @@ class SystemManger:
                 tableInfo.index[col] = ret
                 metaHandler.shut_down()
                 self.IM.update_index(table, old_root_id, ret)
-                print(col, metaHandler.collectTableInfo(table).index[col])
+                print(col, metaHandler.tb_info(table).index[col])
         return
 
     def idx_delete_handle(self, table: str, data: tuple, rid: RID):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         for col in tableInfo.index:
-            if data[tableInfo.getColumnIndex(col)]:
+            if data[tableInfo.index_get(col)]:
                 index = self.IM.start_index(self.inUse, table, tableInfo.index[col])
-                index.delete(data[tableInfo.getColumnIndex(col)], rid)
+                index.delete(data[tableInfo.index_get(col)], rid)
             else:
                 index = self.IM.start_index(self.inUse, table, tableInfo.index[col])
                 index.delete(NULL_VALUE, rid)
@@ -340,7 +340,7 @@ class SystemManger:
     def idx_examine(self, table: str, limits: tuple) -> set:
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         condIndex = {}
 
         def build(limit: Term):
@@ -349,7 +349,7 @@ class SystemManger:
             if limit.table and limit.table != table:
                 return None
             limit_col = limit.col
-            colIndex = tableInfo.getColumnIndex(limit_col)
+            colIndex = tableInfo.index_get(limit_col)
             if colIndex is not None and limit.value is not None and limit.col in tableInfo.index:
                 lo, hi = condIndex.get(limit.col, (-1 << 31 + 1, 1 << 31))
                 tmp = limit.value
@@ -395,7 +395,7 @@ class SystemManger:
     def unique_add(self, table: str, col: str, uniq: str):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         metaHandler.unique_add(table, col, uniq)
         if uniq not in metaHandler.databaseInfo.indexMap:
             self.idx_create(uniq, table, col)
@@ -413,14 +413,14 @@ class SystemManger:
             indexName = foreign[0] + "." + foreign[1]
             if indexName not in metaHandler.databaseInfo.indexMap:
                 self.idx_create(indexName, foreign[0], foreign[1])
-        tableInfo.addForeign(col, foreign)
+        tableInfo.foreign_add(col, foreign)
         metaHandler.shut_down()
         
     def foreign_delete(self, table, col, forName=None):
         metaHandler, tableInfo = self.tb_info(table)
         if tableInfo.foreign.get(col) is not None:
             foreign = tableInfo.foreign[col][0] + "." + tableInfo.foreign[col][1]
-            reftable: TableInfo = metaHandler.collectTableInfo(tableInfo.foreign[col][0])
+            reftable: TableInfo = metaHandler.tb_info(tableInfo.foreign[col][0])
             if reftable.primary.count(tableInfo.foreign[col][1]) != 0:
                 self.idx_delete(foreign)
             tableInfo.foreign_delete(col)
@@ -430,7 +430,7 @@ class SystemManger:
     def primary_set(self, table: str, pri):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        metaHandler.setPrimary(table, pri)
+        metaHandler.primary_set(table, pri)
         if pri:
             for column in pri:
                 indexName = table + "." + column
@@ -450,16 +450,16 @@ class SystemManger:
     def col_insert(self, table: str, column, pri: bool, foreign: bool):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         if pri:
             for co in column:
-                if tableInfo.getColumnIndex(co) is None:
+                if tableInfo.index_get(co) is None:
                     print("OH NO")
                     raise ColumnNotExist(co + " doesn't exist")
             self.primary_set(table, column)
         elif foreign:
             co = column[0]
-            if tableInfo.getColumnIndex(co) is None:
+            if tableInfo.index_get(co) is None:
                 print("OH NO")
                 raise ColumnNotExist(co + " doesn't exist")
             self.foreign_add(table, co, (column[1], column[2]), None)
@@ -467,21 +467,21 @@ class SystemManger:
             if not isinstance(column, ColumnInfo):
                 raise AddError("unsupported add")
             col = column
-            if tableInfo.getColumnIndex(col.name):
+            if tableInfo.index_get(col.name):
                 print("OH NO")
                 raise ColumnNotExist(col.name + " doesn't exist")
             oldTableInfo: TableInfo = deepcopy(tableInfo)
-            metaHandler.databaseInfo.insertColumn(table, col)
+            metaHandler.databaseInfo.col_insert(table, col)
             metaHandler.shut_down()
             copyTableFile = self.tb_path(table + ".copy")
             self.RM.createFile(copyTableFile, tableInfo.rowSize)
             newRecordHandle: FileHandler = self.RM.openFile(copyTableFile)
             scan = FileScan(self.RM.openFile(self.tb_path(table)))
             for record in scan:
-                recordVals = oldTableInfo.loadRecord(record)
+                recordVals = oldTableInfo.record_load(record)
                 valList = list(recordVals)
                 valList.append(col.default)
-                newRecordHandle.insertRecord(tableInfo.buildRecord(valList))
+                newRecordHandle.insertRecord(tableInfo.record_setup(valList))
             self.RM.closeFile(self.tb_path(table))
             self.RM.closeFile(copyTableFile)
             self.RM.replaceFile(copyTableFile, self.tb_path(table))
@@ -491,22 +491,22 @@ class SystemManger:
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
         self.remove_clo_check(table, col)
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         if col not in tableInfo.columnIndex:
             print("OH NO")
             raise ColumnNotExist(col + " doesn't exist")
         oldTableInfo: TableInfo = deepcopy(tableInfo)
-        colIndex = tableInfo.getColumnIndex(col)
-        metaHandler.removeColumn(table, col)
+        colIndex = tableInfo.index_get(col)
+        metaHandler.col_delete(table, col)
         copyTableFile = self.tb_path(table + ".copy")
         self.RM.createFile(copyTableFile, tableInfo.rowSize)
         newRecordHandle: FileHandler = self.RM.openFile(copyTableFile)
         scan = FileScan(self.RM.openFile(self.tb_path(table)))
         for record in scan:
-            recordVals = oldTableInfo.loadRecord(record)
+            recordVals = oldTableInfo.record_load(record)
             valList = list(recordVals)
             valList.pop(colIndex)
-            newRecordHandle.insertRecord(tableInfo.buildRecord(valList))
+            newRecordHandle.insertRecord(tableInfo.record_setup(valList))
         self.RM.closeFile(self.tb_path(table))
         self.RM.closeFile(copyTableFile)
         self.RM.replaceFile(copyTableFile, self.tb_path(table))
@@ -515,11 +515,11 @@ class SystemManger:
     def record_insert(self, table: str, val: list):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
 
-        info = tableInfo.buildRecord(val)
+        info = tableInfo.record_setup(val)
         tempRecord = Record(RID(0, 0), info)
-        valTuple = tableInfo.loadRecord(tempRecord)
+        valTuple = tableInfo.record_load(tempRecord)
 
         # print("valTuple", valTuple)
 
@@ -550,18 +550,18 @@ class SystemManger:
         self.exmineIfActive()
         fileHandler = self.RM.openFile(self.tb_path(table))
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
-        tableInfo.checkValue(valmap)
+        tableInfo = metaHandler.tb_info(table)
+        tableInfo.val_check(valmap)
         records, data = self.idx_search(table, limits)
         for record, oldVal in zip(records, data):
             new = list(oldVal)
             for col in valmap:
-                new[tableInfo.getColumnIndex(col)] = valmap.get(col)
+                new[tableInfo.index_get(col)] = valmap.get(col)
             self.remove_con_check(table, oldVal)
             rid = record.rid
             self.insert_check(table, new, rid)
             self.idx_delete_handle(table, oldVal, rid)
-            record.record = tableInfo.buildRecord(new)
+            record.record = tableInfo.record_setup(new)
             fileHandler.updateRecord(record)
             self.idx_insert_handle(table, tuple(new), rid)
         return LookupOutput('updated_items', (len(records),))
@@ -587,7 +587,7 @@ class SystemManger:
             col2data['*.*'] = next(iter(col2data.values()))
             return tuple(map(lambda x: x.select(col2data[x.target()]), reducers))
 
-        col2tab = metaHandler.getColumn2Table(tables)
+        col2tab = metaHandler.col2tb(tables)
         groupTable, groupCol = groupBy
         for element in limits + reducers:
             if not isinstance(element, Term):
@@ -607,7 +607,7 @@ class SystemManger:
                 raise SelectError("no-group select contains both field and aggregations")
 
         if not reducers and not groupCol and len(tables) == 1 and reducers[0].reducer_type == 3:
-            tableInfo = metaHandler.collectTableInfo(tables[0])
+            tableInfo = metaHandler.tb_info(tables[0])
             fileHandler = self.RM.openFile(self.tb_path(tables[0]))
             return LookupOutput((reducers[0].to_string(False),), (fileHandler.head['AllRecord']))
         tab2results = {}
@@ -696,10 +696,10 @@ class SystemManger:
     def check_uniques(self, table: str, colVals, thisRID: RID = None):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         if tableInfo.unique:
             for col in tableInfo.unique:
-                pairs = {col: colVals[tableInfo.getColumnIndex(col)]}
+                pairs = {col: colVals[tableInfo.index_get(col)]}
                 if self.unique_check(table, pairs, thisRID):
                     return self.unique_check(table, pairs, thisRID)
         return False
@@ -707,32 +707,32 @@ class SystemManger:
     def primary_check(self, table: str, colVals, thisRID: RID = None):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         if tableInfo.primary:
             pairs = {}
             for col in tableInfo.primary:
-                pairs[col] = colVals[tableInfo.getColumnIndex(col)]
+                pairs[col] = colVals[tableInfo.index_get(col)]
             return self.unique_check(table, pairs, thisRID)
         return False
 
     def foreign_check(self, table: str, colVals):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         # print("CheckForeign", table, tableInfo.foreign)
         if len(tableInfo.foreign) > 0:
             for col in tableInfo.foreign:
                 conds = []
                 fortable = tableInfo.foreign[col][0]
                 forcol = tableInfo.foreign[col][1]
-                conds.append(Term(1, fortable, forcol, '=', value=colVals[tableInfo.getColumnIndex(col)]))
+                conds.append(Term(1, fortable, forcol, '=', value=colVals[tableInfo.index_get(col)]))
                 import time; t1 = time.time()
                 records, data = self.idx_search(fortable, tuple(conds))
                 # t2 = time.time(); print(f"{t2 - t1}, {col, fortable}")
                 if len(records) == 0:
-                    return tableInfo.name, colVals[tableInfo.getColumnIndex(col)]
-                # colVal = colVals[tableInfo.getColumnIndex(col)]
-                # foreignTableInfo: TableInfo = metaHandler.collectTableInfo(tableInfo.foreign[col][0])
+                    return tableInfo.name, colVals[tableInfo.index_get(col)]
+                # colVal = colVals[tableInfo.index_get(col)]
+                # foreignTableInfo: TableInfo = metaHandler.tb_info(tableInfo.foreign[col][0])
                 # index = self.IM.start_index(self.inUse, tableInfo.foreign[col][0],
                 #                             foreignTableInfo.index[tableInfo.foreign[col][1]])
                 # if len(set(index.range(colVal, colVal))) == 0:
@@ -774,31 +774,31 @@ class SystemManger:
     def remove_con_check(self, table: str, colVals):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        thistable = metaHandler.collectTableInfo(table)
+        thistable = metaHandler.tb_info(table)
         for tableInfo in metaHandler.databaseInfo.tableMap.values():
             if len(tableInfo.foreign) > 0:
                 for fromcol, (tab, col) in tableInfo.foreign.items():
                     if tab == table:
-                        colval = colVals[thistable.getColumnIndex(col)]
+                        colval = colVals[thistable.index_get(col)]
                         index = self.IM.start_index(self.inUse, tableInfo.name, tableInfo.index[fromcol])
                         if len(set(index.range(colval, colval))) != 0:
                             raise RemoveError("referenced foreignkey value")
         return False
 
     def cond_setup(self, table: str, limits, metahandler):
-        tableInfo = metahandler.collectTableInfo(table)
+        tableInfo = metahandler.tb_info(table)
 
         def build(limit: Term):
             if limit.table is not None and limit.table != table:
                 return None
             limit_col = limit.col
-            colIndex = tableInfo.getColumnIndex(limit_col)
+            colIndex = tableInfo.index_get(limit_col)
             if colIndex is not None:
                 colType = tableInfo.columnType[colIndex]
                 if limit.type == 1:
                     if limit.aim_col:
                         if limit.aim_table == table:
-                            return self.versus(colIndex, limit.operator, tableInfo.getColumnIndex(limit.aim_col))
+                            return self.versus(colIndex, limit.operator, tableInfo.index_get(limit.aim_col))
                         return None
                     else:
                         if colType == "DATE":
@@ -858,7 +858,7 @@ class SystemManger:
     def scan_idx_cond(self, table: str, limits: tuple):
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
-        tableInfo = metaHandler.collectTableInfo(table)
+        tableInfo = metaHandler.tb_info(table)
         records, data = self.idx_search(table, limits)
         headers = tuple(tableInfo.name + "." + colName for colName in tableInfo.columnMap.keys())
         return LookupOutput(headers, data)
