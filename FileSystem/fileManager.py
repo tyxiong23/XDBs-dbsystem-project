@@ -1,70 +1,52 @@
-from utils.macro import *
-from Exceptions.exception import *
-
 import numpy as np
 import os
 
+PAGE_SIZE = 8192
+MAX_FILE_NUM = 128
+PAGE_SIZE_BITS = 13
 
 class FileManager:
+    def __init__(self) -> None:
+        # self.fd = np.zeros(MAX_FILE_NUM, dtype=int)
+        self.file_dict = dict()
+        self.OPEN_FILE_MOD = os.O_RDWR
 
-    def __init__(self):
-        self._fd = np.zeros(MAX_FILE_NUM)
-
-    def createFile(self, name: str):
-        f = open(name, 'w')
-        if f is None:
-            print("OH NO")
-            raise FailCreateError("fail to create " + name)
+    def create_file(self, name: str):
+        f = open(name, "w")
+        assert f is not None, f"Fail to create file [{name}]!!"
         f.close()
-        return
-
-    def destroyFile(self, name: str):
-        os.remove(name)
-        return
-
-    def fileExist(self, name: str):
-        if os.path.exists(name):
-            return True
-        return False
-
-    def renameFile(self, src: str, dst: str):
-        os.rename(src, dst)
-        return
-
-    def openFile(self, name: str):
-        fileID = os.open(name, os.O_RDWR)
-        if fileID == -1:
-            print("OH NO")
-            raise FailOpenError("fail to open " + name)
+        pass
+    
+    def open_file(self, name: str):
+        fileID: int = os.open(name, self.OPEN_FILE_MOD)
+        assert fileID != -1, f"Cannot open file [{name}]"
         return fileID
 
-    def closeFile(self, fileID: int):
-        os.close(fileID)
-        return
+    def remove_file(self, name: str):
+        os.remove(name)
 
-    def writePage(self, fileID: int, pageID: int, buf: np.ndarray):
-        # if pageID % 1 == 0:
-        #     print("FileManager::writePage", fileID, pageID, buf)
-        offset = pageID
-        offset = offset << PAGE_SIZE_IDX
-        error = os.lseek(fileID, offset, os.SEEK_SET)
+    def write_page(self, fileID: int, pageID: int, buf: np.ndarray):
+        # print("FileManager write page", fileID, pageID)
+        os.lseek(fileID, pageID << PAGE_SIZE_BITS, os.SEEK_SET)
         os.write(fileID, buf.tobytes())
-        return
 
-    def readPage(self, fileID: int, pageID: int):
-        offset = pageID
-        offset = offset << PAGE_SIZE_IDX
-        error = os.lseek(fileID, offset, os.SEEK_SET)
+    def new_page(self, fileID: int, buf: np.ndarray):
+        offset = os.lseek(fileID, 0, os.SEEK_END)
+        bt_buffers = buf.tobytes()
+        os.write(fileID, bt_buffers)
+        return offset >> PAGE_SIZE_BITS
+
+    def read_page(self, fileID: int, pageID: int):
+        os.lseek(fileID, pageID << PAGE_SIZE_BITS, os.SEEK_SET)
         error = os.read(fileID, PAGE_SIZE)
-        if error is None:
-            print("OH NO")
-            raise FailReadPageError("fail to read pid: " + str(pageID) + ", fid: " + str(fileID))
+        assert error is not None, f"Cannot read page {pageID} in file {fileID}!!"
         return error
 
-    def newPage(self, fileID: int, buf: np.ndarray):
-        offset = os.lseek(fileID, 0, os.SEEK_END)
-        bts = buf.tobytes()
-        write_return = os.write(fileID, bts)
-        # print(f"FileManager::newPage {write_return, offset}")
-        pID = offset >> PAGE_SIZE_IDX
-        return pID
+    def close_file(self, fileID: int):
+        os.close(fileID)
+    
+    def move_file(self, src: str, dst: str):
+        os.rename(src, dst)
+
+    def file_exists(self, name: str):
+        return True if os.path.exists(name) else False

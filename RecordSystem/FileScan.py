@@ -10,7 +10,7 @@ class FileScan:
 
     def __iter__(self):
         for pageID in range(1, self.handler.head['PageNum']):
-            page = self.handler.RM.BM.getPage(self.handler.fileID, pageID)
+            page = self.handler.RM.BM.get_page(self.handler.fileID, pageID)
             if page[PAGE_FLAG_OFFSET] == RECORD_PAGE_FLAG:
                 bitmap = self.handler.getBitmap(page)
                 for slot in range(len(bitmap)):
