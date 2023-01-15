@@ -12,10 +12,10 @@ class LeafNode(BasicNode):
         super(LeafNode, self).__init__(index_handler)
         self._node_type = 1
 
-        self._child_key_list = child_key_list
-        self._child_list = child_list
+        self.child_keys = child_key_list
+        self.child_vals = child_list
 
-        self._page = page
+        self.page_id = page
         self._father = father
         self._left = left
         self._right = right
@@ -24,39 +24,39 @@ class LeafNode(BasicNode):
     def insert(self, key, value: RID):
         upper = self.upper_bound(key=key)
         if upper is None:
-            self._child_key_list.insert(0, key)
-            self._child_list.insert(0, value)
+            self.child_keys.insert(0, key)
+            self.child_vals.insert(0, value)
         else:
-            self._child_key_list.insert(upper, key)
-            self._child_list.insert(upper, value)
+            self.child_keys.insert(upper, key)
+            self.child_vals.insert(upper, value)
         return None
 
     def remove(self, key, value: RID):
         lower = self.lower_bound(key=key)
         cursor = upper = self.upper_bound(key=key)
-        len_key_list = len(self._child_key_list)
+        len_key_list = len(self.child_keys)
         if upper < len_key_list:
             upper = upper + 1
             cursor = cursor + 1
         for index in range(lower, upper):
-            if self._child_list[index] != value:
+            if self.child_vals[index] != value:
                 continue
             else:
                 cursor = index
                 break
         if cursor != upper:
-            self._child_key_list.pop(cursor)
-            self._child_list.pop(cursor)
-            len_key_list = len(self._child_key_list)
+            self.child_keys.pop(cursor)
+            self.child_vals.pop(cursor)
+            len_key_list = len(self.child_keys)
             if len_key_list > 0:
                 if cursor == 0:
-                    return self._child_key_list[0]
+                    return self.child_keys[0]
         else:
             return None
 
     def page_size(self) -> int:
         # todo:modify
-        len_key_list: int = len(self._child_key_list)
+        len_key_list: int = len(self.child_keys)
         res = 64 + 24 * len_key_list
         return res
 
@@ -68,11 +68,11 @@ class LeafNode(BasicNode):
         array[1] = self._father
         array[2] = self._left
         array[3] = self._right
-        len_key_list = len(self._child_key_list)
+        len_key_list = len(self.child_keys)
         array[4] = len_key_list
         for i in range(len_key_list):
-            rid: RID = self._child_list[i]
-            array[3 * i + 5] = self._child_key_list[i]
+            rid: RID = self.child_vals[i]
+            array[3 * i + 5] = self.child_keys[i]
             array[3 * i + 6] = rid.page
             array[3 * i + 7] = rid.slot
         array.dtype = np.uint8
@@ -81,18 +81,18 @@ class LeafNode(BasicNode):
 
     def range(self, lo, hi):  
         # print(f"LeafRange {self.page, self.depth}, {lo, hi}, {self.child_key_list[-1]}")      
-        if self._child_key_list[-1] < lo:
+        if self.child_keys[-1] < lo:
             return []
         elif self.child_key_list[0] > hi:
             return []
         lower = self.lower_bound(key=lo)
         upper = self.upper_bound(key=hi)
-        # print(lo, hi, self._child_key_list[lower:upper])
+        # print(lo, hi, self.child_keys[lower:upper])
         # print(f"leaf {self.depth}: l-u lid{lower} uid{upper}  len{len(self.child_key_list)-1} {self.child_key_list[lower], lo, hi, self.child_key_list[-1]}")
         
-        return self._child_list[lower:upper]
+        return self.child_vals[lower:upper]
 
-        # print("l-u", lower, upper, self._child_key_list[-1], lo)
+        # print("l-u", lower, upper, self.child_keys[-1], lo)
         # if lower is None or upper is None:
         #     return None
         # elif lower > upper:
@@ -103,6 +103,6 @@ class LeafNode(BasicNode):
         index = self.lower_bound(key=key)
         if index == len(self.child_key_list):
             return None
-        elif self._child_key_list[index] == key:
-            return self._child_list[index]
+        elif self.child_keys[index] == key:
+            return self.child_vals[index]
         return None
