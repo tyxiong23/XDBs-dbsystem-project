@@ -21,64 +21,64 @@ class MetaHandler:
             metaInfo.close()
         else:
             self.databaseInfo = DatabaseInfo(self.databaseName, [])
-            self.updateMetaPath()
+            self.path_update()
             
 
-    def updateMetaPath(self):
+    def path_update(self):
         metaInfo = open(os.path.join(self.systemPath, self.databaseName, self.databaseName + ".me"), 'wb')
         pic.dump(self.databaseInfo, metaInfo)
         metaInfo.close()
 
-    def setPrimary(self, table: str, pri):
-        self.collectTableInfo(table).primary = pri
-        self.updateMetaPath()
+    def primary_set(self, table: str, pri):
+        self.tb_info(table).primary = pri
+        self.path_update()
 
-    def removePrimary(self, table: str):
-        self.collectTableInfo(table).primary = None
-        self.updateMetaPath()
+    def primary_delete(self, table: str):
+        self.tb_info(table).primary = None
+        self.path_update()
 
-    def addUnique(self, table: str, column: str, uniq: str):
-        self.collectTableInfo(table).addUnique(column, uniq)
-        self.updateMetaPath()
+    def unique_add(self, table: str, column: str, uniq: str):
+        self.tb_info(table).unique_add(column, uniq)
+        self.path_update()
 
-    def createIndex(self, index: str, table: str, column: str):
-        self.databaseInfo.createIndex(index, table, column)
-        self.updateMetaPath()
+    def idx_create(self, index: str, table: str, column: str):
+        self.databaseInfo.idx_create(index, table, column)
+        self.path_update()
 
-    def removeIndex(self, index: str):
-        self.databaseInfo.removeIndex(index)
-        self.updateMetaPath()
+    def idx_delete(self, index: str):
+        self.databaseInfo.idx_delete(index)
+        self.path_update()
     
-    def renameIndex(self, src: str, dst: str):
+    def idx_rename(self, src: str, dst: str):
         if self.databaseInfo.indexMap.get(src) is None:
             print("WRONG----NAME DOES NOT EXIST")
             return
         self.databaseInfo.indexMap[dst] = self.databaseInfo.indexMap.pop(src)
-        self.updateMetaPath()
+        self.path_update()
     
-    def insertColumn(self, table: str, col: ColumnInfo):
-        self.databaseInfo.insertColumn(table, col)
-        self.updateMetaPath()
+    def col_insert(self, table: str, col: ColumnInfo):
+        self.databaseInfo.col_insert(table, col)
+        self.path_update()
 
-    def removeColumn(self, table: str, column: str):
-        self.databaseInfo.removeColumn(table, column)
-        self.updateMetaPath()
+    def col_delete(self, table: str, column: str):
+        self.databaseInfo.col_delete(table, column)
+        self.path_update()
     
-    def insertTable(self, table: TableInfo):
-        self.databaseInfo.insertTable(table)
-        self.updateMetaPath()
+    def tb_insert(self, table: TableInfo):
+        self.databaseInfo.tb_insert(table)
+        self.path_update()
 
     def tb_delete(self, table: str):
         self.databaseInfo.tb_delete(table)
-        self.updateMetaPath()
+        self.path_update()
 
-    def collectTableInfo(self, table: str):
+    def tb_info(self, table: str):
         if self.databaseInfo.tableMap.get(table) is None:
             print("WRONG----NAME DOES NOT EXIST")
             return
         return self.databaseInfo.tableMap[table]
 
-    def renameTable(self, src: str, dst: str):
+    def tb_rename(self, src: str, dst: str):
         if self.databaseInfo.tableMap.get(src) is None:
             print("WRONG----NAME DOES NOT EXIST")
             return
@@ -88,12 +88,12 @@ class MetaHandler:
             if indexMap.get(index)[0] == src:
                 colName = indexMap.get(index)[1]
                 self.databaseInfo.indexMap[index] = (dst, colName)
-        self.updateMetaPath()
+        self.path_update()
 
-    def getColumn2Table(self, tables: list):
+    def col2tb(self, tables: list):
         results = {}
         for table in tables:
-            tableInfo = self.collectTableInfo(table)
+            tableInfo = self.tb_info(table)
             for col in tableInfo.columnMap.keys():
                 if results.get(col) is not None:
                     results[col].append(table)
@@ -104,4 +104,4 @@ class MetaHandler:
     
 
     def shut_down(self):
-        self.updateMetaPath()
+        self.path_update()

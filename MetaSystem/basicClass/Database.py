@@ -13,7 +13,7 @@ class DatabaseInfo:
             self.tableMap[table.name]: List[TableInfo] = table
         
 
-    def insertTable(self, table: TableInfo):
+    def tb_insert(self, table: TableInfo):
         if self.tableMap.get(table.name) is not None:
             print("WRONG----NAME EXISTS")
             return
@@ -26,34 +26,34 @@ class DatabaseInfo:
         self.tableMap.pop(table)
         return
 
-    def insertColumn(self, table: str, col: ColumnInfo):
+    def col_insert(self, table: str, col: ColumnInfo):
         if self.tableMap.get(table) is None:
             print("WRONG----NAME DOES NOT EXIST")
             return
-        self.tableMap[table].insertColumn(col)
+        self.tableMap[table].col_insert(col)
 
 
-    def removeColumn(self, table: str, col: str):
+    def col_delete(self, table: str, col: str):
         if self.tableMap.get(table) is None:
             print("WRONG----NAME DOES NOT EXIST")
             return
-        self.tableMap[table].removeColumn(col)
+        self.tableMap[table].col_delete(col)
         return
 
-    def createIndex(self, index: str, table: str, col: str):
+    def idx_create(self, index: str, table: str, col: str):
         if self.indexMap.get(index) is not None:
             print("WRONG----NAME EXISTS")
             return
         self.indexMap[index] = (table, col)
 
-    def removeIndex(self, index: str):
+    def idx_delete(self, index: str):
         if self.indexMap.get(index) is None:
             print("WRONG----NAME DOES NOT EXIST")
             return
         self.indexMap.pop(index)
         return
 
-    def getIndex(self, index: str):
+    def idx_get(self, index: str):
         if self.indexMap.get(index) is not None:
             return self.indexMap.get(index)
         print("WRONG----NAME DOES NOT EXIST")

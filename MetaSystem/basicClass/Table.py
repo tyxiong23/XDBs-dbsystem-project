@@ -20,13 +20,13 @@ class TableInfo:
 
         self.columnType = [col.type for col in self.contents]
         self.columnMap = {col.name: col for col in self.contents}
-        self.columnSize = [col.getSize() for col in self.contents]   
+        self.columnSize = [col.get_size() for col in self.contents]   
         self.columnIndex = {self.contents[i].name: i for i in range(len(self.contents))} 
         self.rowSize = sum(self.columnSize)
         
-    def describe(self):
+    def desc(self):
         description = {
-            col.name: col.getDESC() for col in self.contents
+            col.name: col.desc() for col in self.contents
         }
         
         for key in self.foreign:
@@ -48,63 +48,9 @@ class TableInfo:
     def updataParams(self):
         self.columnMap = {col.name: col for col in self.contents}
         self.columnType = [col.type for col in self.contents]
-        self.columnSize = [col.getSize() for col in self.contents]
+        self.columnSize = [col.get_size() for col in self.contents]
         self.columnIndex = {self.contents[i].name: i for i in range(len(self.contents))}
         self.rowSize = sum(self.columnSize)
-
-    def insertColumn(self, col: ColumnInfo):
-        if col.name in self.columnMap:
-            print("WRONG-----COLUMN NAME EXISTS")
-            return
-        self.contents.append(col)
-        self.updataParams()
-                  
-    def removeColumn(self, name: str):
-        if name not in self.columnMap:
-            print("WRONG-----COLUMN NAME EXISTS")
-            return
-        self.contents.pop(self.columnIndex.get(name))
-        self.updataParams()
-
-    def addForeign(self, column: str, foreign):
-        self.foreign[column] = foreign
-
-    def removeForeign(self, column: str):
-        if column in self.foreign:
-            self.foreign.pop(column)
-
-    def addUnique(self, column: str, uniq):
-        self.unique[column] = uniq
-
-    def buildRecord(self, val: list):
-        if len(val) != len(self.columnSize):
-            print("WRONG-----THE NUMBER OF VALUE DOES NOT MATCH")
-            return
-        offset = 0
-        records = np.zeros(self.rowSize, dtype = np.uint8)
-        
-        for i in range(len(self.columnSize)):
-        
-            if self.columnType[i] != "VARCHAR":
-                for j in range(self.columnSize[i]):
-                    records[offset + j] = self.serialedValue(val[i], self.columnType[i])[j]
-            
-            else:
-                byte = (1, )
-                if val[i] is not None:
-                    try:
-                        byte = (0, ) + tuple(val[i].encode())
-                        if len(byte) > self.columnSize[i]:
-                            print("WRONG----EXCEED MAX SIZE" + str(self.columnSize[i] - 1))
-                            return
-                    except AttributeError:
-                        print("WRONG----WRONG VALUE TYPE")
-                        return
-                records[offset: offset + len(byte)] = byte
-                for j in range(offset + len(byte), offset + self.columnSize[i]):
-                    records[j] = 0
-            offset += self.columnSize[i]
-        return records
 
     def serialedValue(self, val, type: str):
         if val is None:
@@ -147,45 +93,7 @@ class TableInfo:
             print("WRONG----VALID TYPE EXPECTED")
             return
 
-    def loadRecord(self, record: Record):
-        resultList = []
-        offset = 0
-        for i in range(len(self.columnSize)):
-            value = None
-            data = record.record[offset: offset + self.columnSize[i]]
-            
-            if self.columnType[i] == "INT":
-                value = struct.unpack('<q', data)[0]
-                
-            elif self.columnType[i] == "FLOAT":
-                value = struct.unpack('<d', data)[0]
-                
-            elif self.columnType[i] == "VARCHAR":
-                if not data[0]:
-                    value = data.tobytes()[1:].rstrip(b'\x00').decode('utf-8')
-                
-            elif self.columnType[i] == "DATE":
-                value = struct.unpack('<q', data)[0]
-                if value > 0 :
-                    value = date.fromordinal(value)
-           
-            else:
-                print("WRONG----VALID TYPE EXPECTED")
-                return
-            
-            if value != NULL_VALUE:
-                resultList.append(value)
-                
-            else:
-                resultList.append(None)
-            offset += self.columnSize[i]
-        
-        return tuple(resultList)
-
-    def getColumnIndex(self, name: str):
-        return self.columnIndex.get(name)
-
-    def checkValue(self, valueMap: dict):
+    def val_check(self, valueMap: dict):
         for valueName in valueMap:
             
             if self.columnMap.get(valueName) is None:
@@ -221,5 +129,98 @@ class TableInfo:
                 if valueType is not str:
                     print("WRONG----" + valueName + " EXPECT VARCHAR")
                     return
+
+    def col_insert(self, col: ColumnInfo):
+        if col.name in self.columnMap:
+            print("WRONG-----COLUMN NAME EXISTS")
+            return
+        self.contents.append(col)
+        self.updataParams()
+                  
+    def col_delete(self, name: str):
+        if name not in self.columnMap:
+            print("WRONG-----COLUMN NAME EXISTS")
+            return
+        self.contents.pop(self.columnIndex.get(name))
+        self.updataParams()
+
+    def foreign_add(self, column: str, foreign):
+        self.foreign[column] = foreign
+
+    def foreign_delete(self, column: str):
+        if column in self.foreign:
+            self.foreign.pop(column)
+
+    def unique_add(self, column: str, uniq):
+        self.unique[column] = uniq
+
+    def record_setup(self, val: list):
+        if len(val) != len(self.columnSize):
+            print("WRONG-----THE NUMBER OF VALUE DOES NOT MATCH")
+            return
+        offset = 0
+        records = np.zeros(self.rowSize, dtype = np.uint8)
+        
+        for i in range(len(self.columnSize)):
+        
+            if self.columnType[i] != "VARCHAR":
+                for j in range(self.columnSize[i]):
+                    records[offset + j] = self.serialedValue(val[i], self.columnType[i])[j]
+            
+            else:
+                byte = (1, )
+                if val[i] is not None:
+                    try:
+                        byte = (0, ) + tuple(val[i].encode())
+                        if len(byte) > self.columnSize[i]:
+                            print("WRONG----EXCEED MAX SIZE" + str(self.columnSize[i] - 1))
+                            return
+                    except AttributeError:
+                        print("WRONG----WRONG VALUE TYPE")
+                        return
+                records[offset: offset + len(byte)] = byte
+                for j in range(offset + len(byte), offset + self.columnSize[i]):
+                    records[j] = 0
+            offset += self.columnSize[i]
+        return records
+
+    def record_load(self, record: Record):
+        resultList = []
+        offset = 0
+        for i in range(len(self.columnSize)):
+            value = None
+            data = record.record[offset: offset + self.columnSize[i]]
+            
+            if self.columnType[i] == "INT":
+                value = struct.unpack('<q', data)[0]
+                
+            elif self.columnType[i] == "FLOAT":
+                value = struct.unpack('<d', data)[0]
+                
+            elif self.columnType[i] == "VARCHAR":
+                if not data[0]:
+                    value = data.tobytes()[1:].rstrip(b'\x00').decode('utf-8')
+                
+            elif self.columnType[i] == "DATE":
+                value = struct.unpack('<q', data)[0]
+                if value > 0 :
+                    value = date.fromordinal(value)
+           
+            else:
+                print("WRONG----VALID TYPE EXPECTED")
+                return
+            
+            if value != NULL_VALUE:
+                resultList.append(value)
+                
+            else:
+                resultList.append(None)
+            offset += self.columnSize[i]
+        
+        return tuple(resultList)
+
+    def index_get(self, name: str):
+        return self.columnIndex.get(name)
+
                 
             

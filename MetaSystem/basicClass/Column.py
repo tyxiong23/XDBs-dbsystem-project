@@ -6,12 +6,12 @@ class ColumnInfo:
         self.null_permit = null_permit
         self.default = default
 
-    def getSize(self):
+    def get_size(self):
         if self.type != "VARCHAR":
             return 8
         else:
             return self.size + 1
 
-    def getDESC(self):
+    def desc(self):
         """name, type, null, keytype, default, extra"""
         return [self.name, self.type, "OK" if self.null_permit else "NO", "", self.default, ""]
