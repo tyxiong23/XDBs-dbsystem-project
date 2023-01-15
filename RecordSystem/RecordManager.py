@@ -1,5 +1,4 @@
-from FileSystem.FileManager import FileManager
-from FileSystem.BufManager import BufManager
+from FileSystem.bufPageManager import BufPageManager
 from .FileHandler import FileHandler
 
 from Exceptions.exception import *
@@ -9,7 +8,7 @@ from json import dumps, loads
 import numpy as np
 
 class RecordManager:
-    def __init__(self, bm: BufManager):
+    def __init__(self, bm: BufPageManager):
         self.BM = bm
         self.opened = {}
         
@@ -39,16 +38,16 @@ class RecordManager:
                 'BitmapLen': bitmapLength, 'filename': str(name)}
             
     def createFile(self, name: str, recordLen: int):
-        self.BM.FM.createFile(name)
-        fid = self.BM.openFile(name)
-        self.BM.FM.newPage(fid, self.toSerial(self.getHead(recordLen, name)))
-        self.BM.closeFile(fid)
+        self.BM.create_file(name)
+        fid = self.BM.open_file(name)
+        self.BM.new_page(fid, self.toSerial(self.getHead(recordLen, name)))
+        self.BM.close_file(fid)
 
     def openFile(self, name: str):
         if name in self.opened:
             # print(f"RecordManager::openFile {name, self.opened.keys()}")
             return self.opened[name]
-        self.opened[name] = FileHandler(self, self.BM.openFile(name), name)
+        self.opened[name] = FileHandler(self, self.BM.open_file(name), name)
         return self.opened[name]
    
     def closeFile(self, name: str):
@@ -59,14 +58,14 @@ class RecordManager:
         if handler.headChanged:
             handler.changeHead()
         fid = handler.fileID
-        self.BM.closeFile(fid)
+        self.BM.close_file(fid)
         self.opened.pop(name)
         handler.open = False
 
     def renameFile(self, src: str, dst: str):
         if self.opened.get(src) is not None:
             self.closeFile(src)
-        self.BM.FM.renameFile(src, dst) 
+        self.BM.move_file(src, dst) 
     
     def replaceFile(self, src: str, dst: str):
         if self.opened.get(src) is not None:
@@ -74,11 +73,11 @@ class RecordManager:
         if self.opened.get(dst) is not None:
             self.closeFile(dst)
         self.destroyFile(dst)
-        self.BM.FM.renameFile(src, dst)
+        self.BM.move_file(src, dst)
 
     def destroyFile(self, name: str):
         self.closeFile(name)
-        self.BM.FM.destroyFile(name)
+        self.BM.remove_file(name)
     
     def shutdown(self):
         for name in tuple(self.opened.keys()):

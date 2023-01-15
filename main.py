@@ -6,8 +6,7 @@ from OutputSystem.CSVPrinter import CSVPrinter
 from ManageSystem.system_visitor1 import SystemVistor1
 from ManageSystem.system_visitor import SystemVisitor
 from ManageSystem.system_manager import SystemManger
-from FileSystem.fileManager import FileManager
-from FileSystem.BufManager1 import BufManager
+from FileSystem.bufPageManager import BufPageManager
 from RecordSystem.RecordManager import RecordManager
 from IndexSystem.index_manager import IndexManager
 from ManageSystem.Executor import Executor
@@ -34,8 +33,9 @@ if __name__ == '__main__':
     v = SystemVistor1 if newSV else SystemVisitor
     visitor = v()
     syspath = Path(args.base)
-    FM = FileManager()
-    BM = BufManager(FM)
+    # FM = FileManager()
+    # BM = BufPManager(FM)
+    BM = BufPageManager()
     RM = RecordManager(BM)
     IM = IndexManager(BM, syspath)
     manager = SystemManger(visitor, syspath, BM, RM, IM, newSV)

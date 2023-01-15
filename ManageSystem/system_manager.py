@@ -1,7 +1,8 @@
 from .basicClass.Reducer import Reducer
 from .basicClass.Term import Term
 from .basicClass.Join import Join
-from FileSystem.BufManager1 import BufManager
+# from FileSystem.BufManager1 import BufManager
+from FileSystem.bufPageManager import BufPageManager
 from RecordSystem.basicClass.record import Record
 from RecordSystem.basicClass.rid import RID
 from RecordSystem.RecordManager import RecordManager
@@ -35,7 +36,7 @@ import re
 
 
 class SystemManger:
-    def __init__(self, visitor, syspath: Path, bm: BufManager, rm: RecordManager, im: IndexManager, new_v = True):
+    def __init__(self, visitor, syspath: Path, bm: BufPageManager, rm: RecordManager, im: IndexManager, new_v = True):
         self.visitor = visitor
         self.systemPath = syspath
         self.BM = bm
@@ -56,7 +57,7 @@ class SystemManger:
     def shutdown(self):
         self.IM.close_manager()
         self.RM.shutdown()
-        self.BM.shutdown()
+        self.BM.shut_down()
 
     def checkInUse(self):
         if self.inUse is None:
