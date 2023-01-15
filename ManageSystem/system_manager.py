@@ -45,7 +45,7 @@ class SystemManger:
 
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.shutdown()
+        self.shut_down()
 
     @staticmethod
     def buildPattern(pattern: str):
@@ -104,9 +104,9 @@ class SystemManger:
             return val
         raise SelectError("expect one column, get " + str(len(result.headers)))    
     
-    def shutdown(self):
-        self.IM.close_manager()
-        self.RM.shutdown()
+    def shut_down(self):
+        self.IM.shut_down()
+        self.RM.shut_down()
         self.BM.shut_down()
 
     def checkInUse(self):
@@ -135,7 +135,7 @@ class SystemManger:
         if dbname in self.databaselist:
             self.IM.shut_handler(dbname)
             if self.metaHandlers.get(dbname) is not None:
-                self.metaHandlers.pop(dbname).shutdown()
+                self.metaHandlers.pop(dbname).shut_down()
             path: Path = self.systemPath / dbname
             for table in path.iterdir():
                 # print(table.name, path.name)
@@ -269,7 +269,7 @@ class SystemManger:
         table, col = metaHandler.databaseInfo.getIndex(index)
         metaHandler.collectTableInfo(table).index.pop(col)
         metaHandler.removeIndex(index)
-        self.metaHandlers.pop(self.inUse).shutdown()
+        self.metaHandlers.pop(self.inUse).shut_down()
         return
 
     def addUnique(self, table: str, col: str, uniq: str):
@@ -294,7 +294,7 @@ class SystemManger:
             if indexName not in metaHandler.databaseInfo.indexMap:
                 self.createIndex(indexName, foreign[0], foreign[1])
         tableInfo.addForeign(col, foreign)
-        metaHandler.shutdown()
+        metaHandler.shut_down()
         
     def removeForeign(self, table, col, forName=None):
         metaHandler, tableInfo = self.collectTableinfo(table)
@@ -304,7 +304,7 @@ class SystemManger:
             if reftable.primary.count(tableInfo.foreign[col][1]) != 0:
                 self.removeIndex(foreign)
             tableInfo.removeForeign(col)
-            metaHandler.shutdown()
+            metaHandler.shut_down()
         return None
 
     def removePrimary(self, table: str):
@@ -352,7 +352,7 @@ class SystemManger:
                 raise ColumnNotExist(col.name + " doesn't exist")
             oldTableInfo: TableInfo = deepcopy(tableInfo)
             metaHandler.databaseInfo.insertColumn(table, col)
-            metaHandler.shutdown()
+            metaHandler.shut_down()
             copyTableFile = self.getTablePath(table + ".copy")
             self.RM.createFile(copyTableFile, tableInfo.rowSize)
             newRecordHandle: FileHandler = self.RM.openFile(copyTableFile)
@@ -657,7 +657,7 @@ class SystemManger:
                 ret = index.insert(NULL_VALUE, rid)
             if ret is not None:
                 tableInfo.index[col] = ret
-                metaHandler.shutdown()
+                metaHandler.shut_down()
                 self.IM.update_index(table, old_root_id, ret)
                 print(col, metaHandler.collectTableInfo(table).index[col])
         return

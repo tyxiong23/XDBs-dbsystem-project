@@ -145,7 +145,7 @@ class SystemVistor(SQLVisitor):
     def visitUpdate_table(self, ctx:SQLParser.Update_tableContext):
         return self.systemManager.updateRecords(self.get_str(ctx.Identifier()), 
                                                 limits=ctx.where_and_clause().accept(self), 
-                                                valmap=ctx.set_clause.accept(self))
+                                                valmap=ctx.set_clause().accept(self))
 
     # Visit a parse tree produced by SQLParser#select_table.
     def visitSelect_table(self, ctx:SQLParser.Select_tableContext):

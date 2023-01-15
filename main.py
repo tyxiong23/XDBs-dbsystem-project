@@ -65,4 +65,4 @@ if __name__ == '__main__':
                 printer.print(result)
                 sql = ''
 
-    manager.shutdown()
+    manager.shut_down()

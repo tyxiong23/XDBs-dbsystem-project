@@ -103,5 +103,5 @@ class MetaHandler:
         return results
     
 
-    def shutdown(self):
+    def shut_down(self):
         self.updateMetaPath()

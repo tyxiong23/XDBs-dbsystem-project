@@ -79,6 +79,6 @@ class RecordManager:
         self.closeFile(name)
         self.BM.remove_file(name)
     
-    def shutdown(self):
+    def shut_down(self):
         for name in tuple(self.opened.keys()):
             self.closeFile(name)

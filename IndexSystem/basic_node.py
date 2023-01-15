@@ -1,14 +1,15 @@
 from .index_handler import IndexHandler
 from abc import abstractmethod
 import numpy as np
+from utils.macro import *
 
 
 class BasicNode:
     def __init__(self, index_handler: IndexHandler):
         self.page_id = None
-        self._father = None
-        self._node_type = -1 # -1 is abstract, 1 is leaf ,0 is inter
-        self._handler = index_handler
+        self.father_id = None
+        self._node_type = NON_NODE_TYPE
+        self.index_handler = index_handler
         self.depth = 0
         self.child_keys: list = []
         self.child_vals: list = []
@@ -60,29 +61,17 @@ class BasicNode:
     def remove(self, key, value):
         raise NotImplemented
 
-    @abstractmethod
-    def child_list(self):
-        raise NotImplemented
-
-    @property
-    def page(self):
-        res = self.page_id
-        return res
 
     @abstractmethod
     def page_size(self):
         raise NotImplemented
 
     @abstractmethod
-    def to_array(self):
+    def serialize(self):
         raise NotImplemented
 
     @abstractmethod
     def range(self, low, high):
-        raise NotImplemented
-
-    @abstractmethod
-    def search(self, key):
         raise NotImplemented
 
     def split(self):
