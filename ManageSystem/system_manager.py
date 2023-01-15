@@ -174,7 +174,7 @@ class SystemManger:
             for table in path.iterdir():
                 # print(table.name, path.name)
                 if table.name.endswith(".table"):
-                    self.RM.closeFile(str(table))
+                    self.RM.file_close(str(table))
                 table.unlink()
             self.databaselist.remove(dbname)
             path.rmdir()
@@ -213,7 +213,7 @@ class SystemManger:
         metaHandler = self.meta_fetchHandler()
         metaHandler.tb_insert(table)
         tablePath = self.tb_path(table.name)
-        self.RM.createFile(tablePath, table.rowSize)
+        self.RM.file_create(tablePath, table.rowSize)
         return
 
     def tb_delete(self, table: str):
@@ -224,7 +224,7 @@ class SystemManger:
             self.remove_clo_check(table, col)
         metaHandler.tb_delete(table)
         tablePath = self.tb_path(table)
-        self.RM.destroyFile(tablePath)
+        self.RM.file_destory(tablePath)
         return
 
     def tb_info(self, table: str):
@@ -241,7 +241,7 @@ class SystemManger:
         self.exmineIfActive()
         metaHandler = self.meta_fetchHandler()
         metaHandler.tb_rename(src, dst)
-        self.RM.renameFile(self.tb_path(src),self.tb_path(dst))
+        self.RM.file_rename(self.tb_path(src),self.tb_path(dst))
     
     
  
@@ -260,7 +260,7 @@ class SystemManger:
             return
         if tableInfo.index_get(col) is not None:
             colIndex = tableInfo.index_get(col)
-            for record in FileScan(self.RM.openFile(self.tb_path(table))):
+            for record in FileScan(self.RM.file_open(self.tb_path(table))):
                 recordData = tableInfo.record_load(record)
                 indexFile.insert(recordData[colIndex], record.rid)
             metaHandler.idx_create(index, table, col)
@@ -283,12 +283,12 @@ class SystemManger:
         tableInfo = metaHandler.tb_info(table)
         functions = self.cond_setup(table, limits, metaHandler)
         index_filter = self.idx_examine(table, limits)
-        fileHandler: FileHandler = self.RM.openFile(self.tb_path(table))
+        fileHandler: FileHandler = self.RM.file_open(self.tb_path(table))
         records = []
         data = []
         # print("IDX FIL", index_filter, index_filter is not None)
         if index_filter is not None: # is not None:
-            iterator = map(fileHandler.getRecord, index_filter)
+            iterator = map(fileHandler.record_get, index_filter)
             for record in iterator:
                 valTuple = tableInfo.record_load(record)
                 if all(map(lambda fun: fun(valTuple), functions)):
@@ -474,17 +474,17 @@ class SystemManger:
             metaHandler.databaseInfo.col_insert(table, col)
             metaHandler.shut_down()
             copyTableFile = self.tb_path(table + ".copy")
-            self.RM.createFile(copyTableFile, tableInfo.rowSize)
-            newRecordHandle: FileHandler = self.RM.openFile(copyTableFile)
-            scan = FileScan(self.RM.openFile(self.tb_path(table)))
+            self.RM.file_create(copyTableFile, tableInfo.rowSize)
+            newRecordHandle: FileHandler = self.RM.file_open(copyTableFile)
+            scan = FileScan(self.RM.file_open(self.tb_path(table)))
             for record in scan:
                 recordVals = oldTableInfo.record_load(record)
                 valList = list(recordVals)
                 valList.append(col.default)
-                newRecordHandle.insertRecord(tableInfo.record_setup(valList))
-            self.RM.closeFile(self.tb_path(table))
-            self.RM.closeFile(copyTableFile)
-            self.RM.replaceFile(copyTableFile, self.tb_path(table))
+                newRecordHandle.record_insert(tableInfo.record_setup(valList))
+            self.RM.file_close(self.tb_path(table))
+            self.RM.file_close(copyTableFile)
+            self.RM.file_repalce(copyTableFile, self.tb_path(table))
         return
 
     def col_delete(self, table: str, col: str):
@@ -499,17 +499,17 @@ class SystemManger:
         colIndex = tableInfo.index_get(col)
         metaHandler.col_delete(table, col)
         copyTableFile = self.tb_path(table + ".copy")
-        self.RM.createFile(copyTableFile, tableInfo.rowSize)
-        newRecordHandle: FileHandler = self.RM.openFile(copyTableFile)
-        scan = FileScan(self.RM.openFile(self.tb_path(table)))
+        self.RM.file_create(copyTableFile, tableInfo.rowSize)
+        newRecordHandle: FileHandler = self.RM.file_open(copyTableFile)
+        scan = FileScan(self.RM.file_open(self.tb_path(table)))
         for record in scan:
             recordVals = oldTableInfo.record_load(record)
             valList = list(recordVals)
             valList.pop(colIndex)
-            newRecordHandle.insertRecord(tableInfo.record_setup(valList))
-        self.RM.closeFile(self.tb_path(table))
-        self.RM.closeFile(copyTableFile)
-        self.RM.replaceFile(copyTableFile, self.tb_path(table))
+            newRecordHandle.record_insert(tableInfo.record_setup(valList))
+        self.RM.file_close(self.tb_path(table))
+        self.RM.file_close(copyTableFile)
+        self.RM.file_repalce(copyTableFile, self.tb_path(table))
         return
     
     def record_insert(self, table: str, val: list):
@@ -527,8 +527,8 @@ class SystemManger:
         t1 = time.time()
         self.insert_check(table, valTuple)
         t2 = time.time()
-        fileHandle: FileHandler = self.RM.openFile(self.tb_path(table))
-        rid = fileHandle.insertRecord(info)
+        fileHandle: FileHandler = self.RM.file_open(self.tb_path(table))
+        rid = fileHandle.record_insert(info)
         t3 = time.time()
         self.idx_insert_handle(table, valTuple, rid)
         t4 = time.time()
@@ -536,19 +536,19 @@ class SystemManger:
         
     def record_delete(self, table: str, limits: tuple):
         self.exmineIfActive()
-        fileHandler = self.RM.openFile(self.tb_path(table))
+        fileHandler = self.RM.file_open(self.tb_path(table))
         metaHandler = self.meta_fetchHandler()
         records, data = self.idx_search(table, limits)
         for record, valTuple in zip(records, data):
             self.remove_con_check(table, valTuple)
-            fileHandler.deleteRecord(record.rid)
+            fileHandler.record_delete(record.rid)
             self.idx_delete_handle(table, valTuple, record.rid)
         res = LookupOutput('deleted_items', (len(records),))
         return res
 
     def record_update(self, table: str, limits: tuple, valmap: dict):
         self.exmineIfActive()
-        fileHandler = self.RM.openFile(self.tb_path(table))
+        fileHandler = self.RM.file_open(self.tb_path(table))
         metaHandler = self.meta_fetchHandler()
         tableInfo = metaHandler.tb_info(table)
         tableInfo.val_check(valmap)
@@ -562,7 +562,7 @@ class SystemManger:
             self.insert_check(table, new, rid)
             self.idx_delete_handle(table, oldVal, rid)
             record.record = tableInfo.record_setup(new)
-            fileHandler.updateRecord(record)
+            fileHandler.record_update(record)
             self.idx_insert_handle(table, tuple(new), rid)
         return LookupOutput('updated_items', (len(records),))
 
@@ -608,7 +608,7 @@ class SystemManger:
 
         if not reducers and not groupCol and len(tables) == 1 and reducers[0].reducer_type == 3:
             tableInfo = metaHandler.tb_info(tables[0])
-            fileHandler = self.RM.openFile(self.tb_path(tables[0]))
+            fileHandler = self.RM.file_open(self.tb_path(tables[0]))
             return LookupOutput((reducers[0].to_string(False),), (fileHandler.head['AllRecord']))
         tab2results = {}
         for table in tables:

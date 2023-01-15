@@ -21,75 +21,65 @@ class FileHandler:
 
     def __del__(self):
         if self.open:
-            self.RM.closeFile(self.name)
+            self.RM.file_close(self.name)
     
     def calRecordOffset(self,slotID):
-        return RECORD_PAGE_FIXED_HEADER + self.head['BitmapLen'] + slotID * self.head['RecordLen']
+        return PAGE_FIXED_HEADER + self.head['BitmapLen'] + slotID * self.head['RecordLen']
     
     def getBitmap(self, pageBuf: np.ndarray):
-        return np.unpackbits(pageBuf[RECORD_PAGE_FIXED_HEADER: RECORD_PAGE_FIXED_HEADER + self.head['BitmapLen']])[:self.head['RecordNum']]
+        return np.unpackbits(pageBuf[PAGE_FIXED_HEADER: PAGE_FIXED_HEADER + self.head['BitmapLen']])[:self.head['RecordNum']]
     
-    def getNextAvai(self, pageBuf: np.ndarray):
-        byte = pageBuf[RECORD_PAGE_NEXT_OFFSET: RECORD_PAGE_NEXT_OFFSET + 4].tobytes()
-        # print("FileHandler::getNextAvai", int.from_bytes(byte, 'big', signed=True))
+    def nextAvailable_get(self, pageBuf: np.ndarray):
+        byte = pageBuf[PAGE_NEXT_OFFSET: PAGE_NEXT_OFFSET + 4].tobytes()
+        # print("FileHandler::nextAvailable_get", int.from_bytes(byte, 'big', signed=True))
         return int.from_bytes(byte, 'big')
     
-    def setNextAvai(self, pageBuf: np.ndarray, pageID: int):
-        # print("FileHandler::setNextAvai", pageID, type(pageID))
-        pageBuf[RECORD_PAGE_NEXT_OFFSET: RECORD_PAGE_NEXT_OFFSET + 4] = np.frombuffer(pageID.to_bytes(4, 'big'), dtype=np.uint8)
+    def nextAvailable_set(self, pageBuf: np.ndarray, pageID: int):
+        # print("FileHandler::nextAvailable_set", pageID, type(pageID))
+        pageBuf[PAGE_NEXT_OFFSET: PAGE_NEXT_OFFSET + 4] = np.frombuffer(pageID.to_bytes(4, 'big'), dtype=np.uint8)
     
-    def changeHead(self):
+    def head_change(self):
         self.RM.BM.fetch_page(self.fileID, 0, self.RM.toSerial(self.head)) 
 
-    def getPage(self, pageID: int):
-        return self.RM.BM.get_page(self.fileID, pageID)
-
-    def fetchPage(self, pageID: int, buf: np.ndarray):
-        self.RM.BM.fetch_page(self.fileID, pageID, buf)
-
-    def newPage(self):
-        return self.RM.BM.new_page(self.fileID, np.zeros(PAGE_SIZE, dtype=np.uint8))
-
-    def appendPage(self):
+    def page_append(self):
         buffer = np.full(PAGE_SIZE, -1, dtype=np.uint8)
         # print("buf", buf[:5])
-        buffer[PAGE_FLAG_OFFSET] = RECORD_PAGE_FLAG
+        buffer[PAGE_FLAG_OFFSET] = PAGE_FLAGE
         appendPageNextAvai = self.head['NextAvai']
-        self.setNextAvai(buffer, self.head['NextAvai'])
+        self.nextAvailable_set(buffer, self.head['NextAvai'])
         self.headChanged = True
         self.head['PageNum'] += 1
         self.head['NextAvai'] = self.RM.BM.new_page(self.fileID, buffer)
-        # print(f"FileHandle::appendPage pid,appendNextAvai {pID, appendPageNextAvai, self.getNextAvai(buf)}")
-    
-    def getRecord(self, rid: RID, buf=None):
+        # print(f"FileHandle::page_append pid,appendNextAvai {pID, appendPageNextAvai, self.nextAvailable_get(buf)}")   
+    def record_get(self, rid: RID, buf=None):
         if buf is None:
             buf = self.RM.BM.get_page(self.fileID, rid.page)
-        # recordOff = rid.slot * self.head['RecordLen'] + RECORD_PAGE_FIXED_HEADER + self.head['BitmapLen']
+        # recordOff = rid.slot * self.head['RecordLen'] + PAGE_FIXED_HEADER + self.head['BitmapLen']
         return Record(rid, buf[self.calRecordOffset(rid.slot): self.calRecordOffset(rid.slot) + self.head['RecordLen']])
 
-    def insertRecord(self, record: np.ndarray):
+    def record_insert(self, record: np.ndarray):
         if self.head['NextAvai'] == 0:
-            self.appendPage()
+            self.page_append()
         nextAvailableSlot = self.head['NextAvai']
         page = self.RM.BM.get_page(self.fileID, nextAvailableSlot)
-        # print(f"fileHandler::insertRecord nextAvai {nextAvai} nextPage.nextAvai {self.getNextAvai(page)}, {page[:5]}")
+        # print(f"fileHandler::record_insert nextAvai {nextAvai} nextPage.nextAvai {self.nextAvailable_get(page)}, {page[:5]}")
         bitmap = self.getBitmap(page)
         slotID = np.where(bitmap)[0][0]
         
         if len(np.where(bitmap)[0]) == 1:
-            self.head['NextAvai'] = self.getNextAvai(page)
-            self.setNextAvai(page, nextAvailableSlot)
-            # print(f"fileHandler::insertRecord len(np.where(bitmap)[0]) == 1 {np.where(bitmap)[0]}, {self.getNextAvai(page)}, {page}")
+            self.head['NextAvai'] = self.nextAvailable_get(page)
+            self.nextAvailable_set(page, nextAvailableSlot)
+            # print(f"fileHandler::record_insert len(np.where(bitmap)[0]) == 1 {np.where(bitmap)[0]}, {self.nextAvailable_get(page)}, {page}")
 
         self.headChanged = True
         bitmap[slotID] = False
         self.head['AllRecord'] += 1
         page[self.calRecordOffset(slotID): self.calRecordOffset(slotID) + self.head['RecordLen']] = record
-        page[RECORD_PAGE_FIXED_HEADER: RECORD_PAGE_FIXED_HEADER + self.head['BitmapLen']] = np.packbits(bitmap)
+        page[PAGE_FIXED_HEADER: PAGE_FIXED_HEADER + self.head['BitmapLen']] = np.packbits(bitmap)
         self.RM.BM.fetch_page(self.fileID, nextAvailableSlot, page)
         return RID(nextAvailableSlot, slotID)
 
-    def deleteRecord(self, rid: RID):
+    def record_delete(self, rid: RID):
         self.headChanged = True
         self.head['AllRecord'] -= 1
         page = self.RM.BM.get_page(self.fileID, rid.page)
@@ -98,14 +88,14 @@ class FileHandler:
         if bitmap[rid.slot] == 0:
             bitmap[rid.slot] = True
         
-        page[RECORD_PAGE_FIXED_HEADER: RECORD_PAGE_FIXED_HEADER + self.head['BitmapLen']] = np.packbits(bitmap)
-        if self.getNextAvai(page) == rid.page:
-            self.setNextAvai(page, self.head['NextAvai'])
+        page[PAGE_FIXED_HEADER: PAGE_FIXED_HEADER + self.head['BitmapLen']] = np.packbits(bitmap)
+        if self.nextAvailable_get(page) == rid.page:
+            self.nextAvailable_set(page, self.head['NextAvai'])
             self.head['NextAvai'] = rid.page
             
         self.RM.BM.fetch_page(self.fileID, rid.page, page)
 
-    def updateRecord(self, record: Record):
+    def record_update(self, record: Record):
         page = self.RM.BM.get_page(self.fileID, record.rid.page)
         page[self.calRecordOffset(record.rid.slot): self.calRecordOffset(record.rid.slot) + self.head['RecordLen']] = record.record
         self.RM.BM.fetch_page(self.fileID, record.rid.page, page)

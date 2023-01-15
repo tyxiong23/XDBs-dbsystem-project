@@ -2,14 +2,8 @@ import numpy as np
 from .fileManager import FileManager
 from .findReplace import FindReplace
 from typing import Tuple
+from utils.constants import *
 
-FILE_ID_BITS = 16
-ID_DEFAULT_VAL = -1
-CAP = 60000
-MOD = 60000
-PAGE_SIZE = 8192
-MAX_FILE_NUM = 128
-PAGE_SIZE_BITS = 13
 
 class BufUtils:
     @staticmethod
@@ -27,14 +21,14 @@ class BufUtils:
 class BufPageManager(FileManager):
     def __init__(self) -> None:
         super().__init__()
-        self.replace = FindReplace(CAP)
+        self.replace = FindReplace(CAPACITY)
         self.reset()
 
     def reset(self):
-        self.dirty = np.zeros(CAP, dtype=bool)
-        self.buffer = np.zeros((CAP, PAGE_SIZE), dtype=np.uint8)
+        self.dirty = np.zeros(CAPACITY, dtype=bool)
+        self.buffer = np.zeros((CAPACITY, PAGE_SIZE), dtype=np.uint8)
         self.fpID2idx = dict()
-        self.idx2fpID = np.zeros((CAP, ), dtype=int) + ID_DEFAULT_VAL
+        self.idx2fpID = np.zeros((CAPACITY, ), dtype=int) + ID_DEFAULT_VAL
         self.file_cache_pages = dict()
         self.last = ID_DEFAULT_VAL
 
@@ -52,7 +46,7 @@ class BufPageManager(FileManager):
     def get_page(self, fileID: int, pageID: int) -> np.ndarray:
         fpID = BufUtils.combine_ids(fileID, pageID)
         idx = self.fpID2idx.get(fpID)
-        # print("bufManager::getPage", idx, fileID, pageID, )
+        # print("bufManager::page_get", idx, fileID, pageID, )
         if idx is not None:
             self.access(idx)
             
@@ -120,7 +114,7 @@ class BufPageManager(FileManager):
 
     def shut_down(self):
         # release cache
-        dirty_ids = np.arange(CAP)[self.dirty]
+        dirty_ids = np.arange(CAPACITY)[self.dirty]
         for idx in dirty_ids:
             self.write_back(idx)
         dict_copy = self.file_cache_pages.copy()

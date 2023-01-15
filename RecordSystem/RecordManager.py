@@ -20,16 +20,13 @@ class RecordManager:
             results[i] = list(serial)[i]
         return results
 
-    def getHead(self, recordLen: int, name: str):
-        recordAmount = ( (PAGE_SIZE - RECORD_PAGE_FIXED_HEADER )* 8) // (1 + (recordLen * 8)) + 1
+    def head_get(self, recordLen: int, name: str):
+        recordAmount = ( (PAGE_SIZE - PAGE_FIXED_HEADER )* 8) // (1 + (recordLen * 8)) + 1
         total = ((recordAmount + 7) / 8) + recordAmount * recordLen
         
-        while total > (PAGE_SIZE - RECORD_PAGE_FIXED_HEADER):
+        while total > (PAGE_SIZE - PAGE_FIXED_HEADER):
             recordAmount -= 1
             total = ((recordAmount + 7) / 8) + recordAmount * recordLen
-            
-        # if recordAmount <= 0:
-        #      print("WRONG-----RECORD TOO LONG")
              
         bitmapLength = int((recordAmount + 7) >> 3)
         
@@ -37,48 +34,48 @@ class RecordManager:
                 'PageNum': 1,'AllRecord': 0, 'NextAvai': 0, 
                 'BitmapLen': bitmapLength, 'filename': str(name)}
             
-    def createFile(self, name: str, recordLen: int):
+    def file_create(self, name: str, recordLen: int):
         self.BM.create_file(name)
         fid = self.BM.open_file(name)
-        self.BM.new_page(fid, self.toSerial(self.getHead(recordLen, name)))
+        self.BM.new_page(fid, self.toSerial(self.head_get(recordLen, name)))
         self.BM.close_file(fid)
 
-    def openFile(self, name: str):
+    def file_open(self, name: str):
         if name in self.opened:
-            # print(f"RecordManager::openFile {name, self.opened.keys()}")
+            # print(f"RecordManager::file_open {name, self.opened.keys()}")
             return self.opened[name]
         self.opened[name] = FileHandler(self, self.BM.open_file(name), name)
         return self.opened[name]
    
-    def closeFile(self, name: str):
+    def file_close(self, name: str):
         print("RecordManager::closeFIle", name)
         if self.opened.get(name) is None:
             return
         handler = self.opened.get(name)
         if handler.headChanged:
-            handler.changeHead()
+            handler.head_change()
         fid = handler.fileID
         self.BM.close_file(fid)
         self.opened.pop(name)
         handler.open = False
 
-    def renameFile(self, src: str, dst: str):
+    def file_rename(self, src: str, dst: str):
         if self.opened.get(src) is not None:
-            self.closeFile(src)
+            self.file_close(src)
         self.BM.move_file(src, dst) 
     
-    def replaceFile(self, src: str, dst: str):
+    def file_repalce(self, src: str, dst: str):
         if self.opened.get(src) is not None:
-            self.closeFile(src)
+            self.file_close(src)
         if self.opened.get(dst) is not None:
-            self.closeFile(dst)
-        self.destroyFile(dst)
+            self.file_close(dst)
+        self.file_destory(dst)
         self.BM.move_file(src, dst)
 
-    def destroyFile(self, name: str):
-        self.closeFile(name)
+    def file_destory(self, name: str):
+        self.file_close(name)
         self.BM.remove_file(name)
     
     def shut_down(self):
         for name in tuple(self.opened.keys()):
-            self.closeFile(name)
+            self.file_close(name)
