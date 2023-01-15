@@ -72,25 +72,25 @@ class SystemVistor(SQLVisitor):
 
     # Visit a parse tree produced by SQLParser#create_db.
     def visitCreate_db(self, ctx:SQLParser.Create_dbContext):
-        return self.systemManager.createDatabase(self.get_str(ctx.Identifier()))
+        return self.systemManager.db_create(self.get_str(ctx.Identifier()))
 
     # Visit a parse tree produced by SQLParser#drop_db.
     def visitDrop_db(self, ctx:SQLParser.Drop_dbContext):
-        return self.systemManager.removeDatabase(self.get_str(ctx.Identifier()))
+        return self.systemManager.db_delete(self.get_str(ctx.Identifier()))
 
     # Visit a parse tree produced by SQLParser#show_dbs.
     def visitShow_dbs(self, ctx:SQLParser.Show_dbsContext):
         print("visitSHow_dbs")
-        return LookupOutput("databases", self.systemManager.displayDataBaseNames())
+        return LookupOutput("databases", self.systemManager.db_showNames())
 
     # Visit a parse tree produced by SQLParser#use_db.
     def visitUse_db(self, ctx:SQLParser.Use_dbContext):
         print("visitUSE_dbs")
-        return self.systemManager.useDatabase(self.get_str(ctx.Identifier()))
+        return self.systemManager.db_change(self.get_str(ctx.Identifier()))
 
     # Visit a parse tree produced by SQLParser#show_tables.
     def visitShow_tables(self, ctx:SQLParser.Show_tablesContext):
-        return LookupOutput("tables", self.systemManager.displayTableNames())
+        return LookupOutput("tables", self.systemManager.tb_showNames())
 
     # Visit a parse tree produced by SQLParser#show_indexes.
     def visitShow_indexes(self, ctx:SQLParser.Show_indexesContext):
@@ -114,36 +114,36 @@ class SystemVistor(SQLVisitor):
         tableName = self.get_str(ctx.Identifier())
         print("visitCreateTable", tableName, foreignKeys, primary)
         tableInfo = TableInfo(tableName, columns)
-        res = manager.createTable(tableInfo)
-        manager.setPrimary(tableName, primary)
+        res = manager.tb_create(tableInfo)
+        manager.primary_set(tableName, primary)
         for i in foreignKeys:
-            manager.addForeign(tableName, i, foreignKeys[i])
+            manager.foreign_add(tableName, i, foreignKeys[i])
         return res
 
     # Visit a parse tree produced by SQLParser#drop_table.
     def visitDrop_table(self, ctx:SQLParser.Drop_tableContext):
         tableName = self.get_str(ctx.Identifier())
-        return self.systemManager.removeTable(tableName)
+        return self.systemManager.tb_delete(tableName)
 
     # Visit a parse tree produced by SQLParser#describe_table.
     def visitDescribe_table(self, ctx:SQLParser.Describe_tableContext):
-        return self.systemManager.descTable(self.get_str(ctx.Identifier()))
+        return self.systemManager.tb_show(self.get_str(ctx.Identifier()))
 
     # Visit a parse tree produced by SQLParser#insert_into_table.
     def visitInsert_into_table(self, ctx:SQLParser.Insert_into_tableContext):
         manager = self.systemManager
         results = ctx.value_lists().accept(self)
         for result in results:
-            manager.insertRecord(self.get_str(ctx.getChild(2)), result)
+            manager.record_insert(self.get_str(ctx.getChild(2)), result)
         return LookupOutput('inserted_items', (len(results),))
 
     # Visit a parse tree produced by SQLParser#delete_from_table.
     def visitDelete_from_table(self, ctx:SQLParser.Delete_from_tableContext):
-        return self.systemManager.deleteRecords(self.get_str(ctx.Identifier()), ctx.where_and_clause().accept(self))
+        return self.systemManager.record_delete(self.get_str(ctx.Identifier()), ctx.where_and_clause().accept(self))
 
     # Visit a parse tree produced by SQLParser#update_table.
     def visitUpdate_table(self, ctx:SQLParser.Update_tableContext):
-        return self.systemManager.updateRecords(self.get_str(ctx.Identifier()), 
+        return self.systemManager.record_update(self.get_str(ctx.Identifier()), 
                                                 limits=ctx.where_and_clause().accept(self), 
                                                 valmap=ctx.set_clause().accept(self))
 
@@ -159,63 +159,63 @@ class SystemVistor(SQLVisitor):
         limit = self.get_int(ctx.Integer(0)) if ctx.Integer() else None
         offset = self.get_int(ctx.Integer(1)) if ctx.Integer(1) else 0
         # print("Reducers", ctx.selectors().accept(self), "Limits", term)
-        return self.systemManager.selectRecordsLimit(ctx.selectors().accept(self), ctx.identifiers().accept(self),
+        return self.systemManager.recordLimit_select(ctx.selectors().accept(self), ctx.identifiers().accept(self),
                                                       term, group_by,
                                                       limit, offset)
 
     # Visit a parse tree produced by SQLParser#alter_table_add.
     def visitAlter_table_add(self, ctx:SQLParser.Alter_table_addContext):
-        self.systemManager.addColumn(self.get_str(ctx.Identifier()), ctx.field().accept(self), 
+        self.systemManager.col_insert(self.get_str(ctx.Identifier()), ctx.field().accept(self), 
                           isinstance(ctx.field(), SQLParser.Primary_key_fieldContext), 
                           ctx.field().getChild(0).getText() == 'FOREIGN'
                           )
 
     # Visit a parse tree produced by SQLParser#alter_table_drop.
     def visitAlter_table_drop(self, ctx:SQLParser.Alter_table_dropContext):
-        self.systemManager.removeColumn(self.get_str(ctx.Identifier(0)), self.get_str(ctx.Identifier(1)))
+        self.systemManager.col_delete(self.get_str(ctx.Identifier(0)), self.get_str(ctx.Identifier(1)))
 
     # Visit a parse tree produced by SQLParser#alter_table_change.
     def visitAlter_table_change(self, ctx:SQLParser.Alter_table_changeContext):
-        self.systemManager.renameTable(self.get_str(ctx.Identifier(0)), self.get_str(ctx.Identifier(1)))
+        self.systemManager.tb_rename(self.get_str(ctx.Identifier(0)), self.get_str(ctx.Identifier(1)))
 
     # Visit a parse tree produced by SQLParser#alter_add_index.
     def visitAlter_add_index(self, ctx:SQLParser.Alter_add_indexContext):
         indices = ctx.identifiers().accept(self)
         for i in indices:
-            self.systemManager.createIndex(self.to_str(ctx.Identifier(1)), table=self.get_str(ctx.Identifier(0)), col=i)
+            self.systemManager.idx_create(self.to_str(ctx.Identifier(1)), table=self.get_str(ctx.Identifier(0)), col=i)
 
     # ALTER TODO
     # Visit a parse tree produced by SQLParser#alter_drop_index.
     def visitAlter_drop_index(self, ctx:SQLParser.Alter_drop_indexContext):
-        return self.systemManager.removeIndex(self.get_str(ctx.Identifier(1)))
+        return self.systemManager.idx_delete(self.get_str(ctx.Identifier(1)))
         # return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SQLParser#alter_table_drop_pk.
     def visitAlter_table_drop_pk(self, ctx:SQLParser.Alter_table_drop_pkContext):
         # TODO
-        self.systemManager.removePrimary(self.get_str(ctx.Identifier(0)))
+        self.systemManager.primary_delete(self.get_str(ctx.Identifier(0)))
 
     # Visit a parse tree produced by SQLParser#alter_table_drop_foreign_key.
     def visitAlter_table_drop_foreign_key(self, ctx:SQLParser.Alter_table_drop_foreign_keyContext):
         # TODO
-        self.systemManager.removeForeign(self.get_str(ctx.Identifier(0)), self.get_str(ctx.Identifier(1)), None)
+        self.systemManager.foreign_delete(self.get_str(ctx.Identifier(0)), self.get_str(ctx.Identifier(1)), None)
 
     # Visit a parse tree produced by SQLParser#alter_table_add_pk.
     def visitAlter_table_add_pk(self, ctx:SQLParser.Alter_table_add_pkContext):
         # TODO
-        self.systemManager.setPrimary(self.get_str(ctx.Identifier(0)), ctx.identifiers().accept(self))
+        self.systemManager.primary_set(self.get_str(ctx.Identifier(0)), ctx.identifiers().accept(self))
 
     # Visit a parse tree produced by SQLParser#alter_table_add_foreign_key.
     def visitAlter_table_add_foreign_key(self, ctx:SQLParser.Alter_table_add_foreign_keyContext):
         for (t1, t2) in zip(ctx.identifiers(0).accept(self), ctx.identifiers(1).accept(self)):
-            self.systemManager.addForeign(self.get_str(ctx.Identifier(0)), t1,
+            self.systemManager.foreign_add(self.get_str(ctx.Identifier(0)), t1,
                                            (self.get_str(ctx.Identifier(2)), t2), self.get_str(ctx.Identifier(1)))
 
     # Visit a parse tree produced by SQLParser#alter_table_add_unique.
     def visitAlter_table_add_unique(self, ctx:SQLParser.Alter_table_add_uniqueContext):
         # TODO
         table, name, column = tuple(map(self.to_str, ctx.Identifier()))
-        return self.systemManager.addUnique(table, column, name)
+        return self.systemManager.unique_add(table, column, name)
 
     # Visit a parse tree produced by SQLParser#field_list.
     def visitField_list(self, ctx:SQLParser.Field_listContext):
@@ -317,7 +317,7 @@ class SystemVistor(SQLVisitor):
         out = ctx.select_table().accept(self)
         return Term(1, tableName, colName, 
                     self.get_str(ctx.operator_()), 
-                    value=manager.resultToValue(result=out, is_in=False)
+                    value=manager.getVal(result=out, is_in=False)
                     )
 
 
@@ -337,7 +337,7 @@ class SystemVistor(SQLVisitor):
     # Visit a parse tree produced by SQLParser#where_in_select.
     def visitWhere_in_select(self, ctx:SQLParser.Where_in_selectContext):
         tableName, colName = ctx.column().accept(self)
-        return Term(2, tableName, colName, value=self.systemManager.resultToValue(ctx.select_table().accept(self), True))
+        return Term(2, tableName, colName, value=self.systemManager.getVal(ctx.select_table().accept(self), True))
 
 
     # Visit a parse tree produced by SQLParser#where_like_string.

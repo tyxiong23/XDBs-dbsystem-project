@@ -19,7 +19,7 @@ class DatabaseInfo:
             return
         self.tableMap[table.name] = table
         
-    def removeTable(self, table: str):
+    def tb_delete(self, table: str):
         if self.tableMap.get(table) is None:
             print("WRONG----NAME DOES NOT EXIST")
             return

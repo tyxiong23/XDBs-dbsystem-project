@@ -8,7 +8,7 @@ class Executor:
 
     def exec_csv(self, manager: SystemManger, path: Path, dbname: str, tbname: str):
         def load(iterator):
-            _, tableInfo = manager.collectTableinfo(tbname)
+            _, tableInfo = manager.tb_info(tbname)
             
             def parse(valtypePair):
                 val, type = valtypePair
@@ -30,18 +30,18 @@ class Executor:
                 if data[-1] == '':
                     data = data[:-1]
                 data = data.split(',')
-                manager.insertRecord(tbname, list(tuple(map(parse, zip(data, tableInfo.columnType)))))
+                manager.record_insert(tbname, list(tuple(map(parse, zip(data, tableInfo.columnType)))))
                 insertNum += 1
             return insertNum
 
         if not tbname:
             tbname = path.stem
-        manager.useDatabase(dbname)
+        manager.db_change(dbname)
         return [LookupOutput('inserted_items', (load(open(path, encoding='utf-8')),), cost = manager.visitor.get_time_delta())]
 
     def exec_sql(self, manager: SystemManger, path: Path, dbname: str, tbname: str):
         if dbname:
-            manager.useDatabase(dbname)
+            manager.db_change(dbname)
         return manager.execute(open(path, encoding='utf-8').read())
         
     def execute(self, manager: SystemManger, path: Path, dbname: str, tbname: str):

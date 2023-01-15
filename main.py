@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     # Use the given database
     if args.database:
-        change_db = [systemManager.useDatabase(args.database)]
+        change_db = [systemManager.db_change(args.database)]
         printer.print(change_db)
 
     # operation from sql or csv file

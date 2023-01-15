@@ -68,8 +68,8 @@ class MetaHandler:
         self.databaseInfo.insertTable(table)
         self.updateMetaPath()
 
-    def removeTable(self, table: str):
-        self.databaseInfo.removeTable(table)
+    def tb_delete(self, table: str):
+        self.databaseInfo.tb_delete(table)
         self.updateMetaPath()
 
     def collectTableInfo(self, table: str):
