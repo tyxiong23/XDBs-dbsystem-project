@@ -1,13 +1,11 @@
+from utils.constants import *
 import numpy as np
 import os
 
-PAGE_SIZE = 8192
-MAX_FILE_NUM = 128
-PAGE_SIZE_BITS = 13
 
 class FileManager:
     def __init__(self) -> None:
-        # self.fd = np.zeros(MAX_FILE_NUM, dtype=int)
+        # self.fd = np.zeros(FILE_MAX_AMOUNT, dtype=int)
         self.file_dict = dict()
         self.OPEN_FILE_MOD = os.O_RDWR
 
