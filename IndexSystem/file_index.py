@@ -1,5 +1,5 @@
-from .leaf_node1 import LeafNode
-from .nonleaf_node1 import NoneLeafNode
+from .leafNode import LeafNode
+from .interNode import InterNode
 from .index_handler import IndexHandler
 from RecordSystem.basicClass.rid import RID
 # from ..RecordSystem.rid import RID
