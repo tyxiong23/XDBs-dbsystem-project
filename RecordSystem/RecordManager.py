@@ -9,7 +9,6 @@ from json import dumps, loads
 import numpy as np
 
 class RecordManager:
-
     def __init__(self, bm: BufManager):
         self.BM = bm
         self.opened = {}

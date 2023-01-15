@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class MyLinkList:
+class LinkList:
     def __init__(self, c: int, n: int):
         self.cap = c
         self.list_num = n

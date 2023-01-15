@@ -6,8 +6,8 @@ from OutputSystem.CSVPrinter import CSVPrinter
 from ManageSystem.system_visitor1 import SystemVistor1
 from ManageSystem.system_visitor import SystemVisitor
 from ManageSystem.system_manager import SystemManger
-from FileSystem.FileManager import FileManager
-from FileSystem.BufManager import BufManager
+from FileSystem.fileManager import FileManager
+from FileSystem.BufManager1 import BufManager
 from RecordSystem.RecordManager import RecordManager
 from IndexSystem.index_manager import IndexManager
 from ManageSystem.Executor import Executor

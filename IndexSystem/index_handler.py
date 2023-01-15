@@ -1,6 +1,6 @@
 import numpy as np
 
-from FileSystem.BufManager import BufManager
+from FileSystem.BufManager1 import BufManager
 from utils.macro import *
 
 class IndexHandler:

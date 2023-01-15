@@ -1,7 +1,7 @@
 from .index_handler import IndexHandler
 from .file_index import FileIndex
 from typing import Dict
-from FileSystem.BufManager import BufManager
+from FileSystem.BufManager1 import BufManager
 from .FileIndexID import FileIndexID
 
 
