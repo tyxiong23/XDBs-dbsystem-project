@@ -1,7 +1,6 @@
 from .basicClass.Reducer import Reducer
 from .basicClass.Term import Term
 from .basicClass.Join import Join
-# from FileSystem.BufManager1 import BufManager
 from FileSystem.bufPageManager import BufPageManager
 from RecordSystem.basicClass.record import Record
 from RecordSystem.basicClass.rid import RID
