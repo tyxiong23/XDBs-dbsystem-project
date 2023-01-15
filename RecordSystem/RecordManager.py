@@ -1,4 +1,4 @@
-from FileSystem.FileManager import FileManager
+from FileSystem.fileManager import FileManager
 from FileSystem.BufManager import BufManager
 from .FileHandler import FileHandler
 

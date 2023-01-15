@@ -1,8 +1,8 @@
 import numpy as np
 
 from utils.macro import *
-from .FileManager import FileManager
-from .FindReplace import FindReplace
+from .fileManager import FileManager
+from .findReplace import FindReplace
 
 
 class BufManager:
