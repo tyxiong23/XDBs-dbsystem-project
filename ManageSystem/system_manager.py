@@ -1,37 +1,31 @@
-from .basicClass.Reducer import Reducer
-from .basicClass.Term import Term
-from .basicClass.Join import Join
 from FileSystem.bufPageManager import BufPageManager
+from RecordSystem.FileScan import FileScan
+from RecordSystem.FileHandler import FileHandler
 from RecordSystem.basicClass.record import Record
 from RecordSystem.basicClass.rid import RID
 from RecordSystem.RecordManager import RecordManager
-from RecordSystem.FileHandler import FileHandler
-from RecordSystem.FileScan import FileScan
 from IndexSystem.index_manager import IndexManager
+from MetaSystem.MetaHandler import MetaHandler
+from .basicClass.Term import Term
+from .basicClass.Reducer import Reducer
+from OutputSystem.basicClass.outputUnit import LookupOutput
+from antlr_SQLparser.SQLParser import SQLParser
+from antlr_SQLparser.SQLLexer import SQLLexer
 from MetaSystem.basicClass.Table import TableInfo
 from MetaSystem.basicClass.Column import ColumnInfo
-from MetaSystem.MetaHandler import MetaHandler
-from OutputSystem.basicClass.outputUnit import LookupOutput
-from OutputSystem.TablePrinter import TablePrinter
-from Exceptions.exception import *
+from OutputSystem.TablePrinter import *
 from utils.macro import *
+from Exceptions.exception import *
+from pathlib import Path
+from .basicClass.Join import Join
 from antlr4 import InputStream, CommonTokenStream
 from antlr4.error.Errors import ParseCancellationException
 from antlr4.error.ErrorListener import ErrorListener
-
-from pathlib import Path
 from copy import deepcopy
 from datetime import date
-
 from typing import Tuple
 
 import re
-
-
-
-
-
-
 
 
 class SystemManger:
@@ -46,12 +40,70 @@ class SystemManger:
         for item in syspath.iterdir():
             self.databaselist.append(item.name)
         self.inUse = None
+        self.visitor.system_manager = self
         self.visitor.setManager(self)
-        self.count = 0
+
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.shutdown()
 
+    @staticmethod
+    def buildPattern(pattern: str):
+        pattern = pattern.replace('%%', '\r')
+        pattern = pattern.replace('%?', '\n')
+        pattern = pattern.replace('%_', '\0')
+        pattern = re.escape(pattern)
+        pattern = pattern.replace('%', '.*')
+        pattern = pattern.replace(r'\?', '.')
+        pattern = pattern.replace('_', '.')
+        pattern = pattern.replace('\r', '%')
+        pattern = pattern.replace('\n', r'\?')
+        pattern = pattern.replace('\0', '_')
+        pattern = re.compile('^' + pattern + '$')
+        return pattern
+     
+    @staticmethod
+    def compare(this, operator, other):
+        if operator == "=":
+            return lambda x: x[this] == x[other]
+        elif operator == "<":
+            return lambda x: x[this] < x[other]
+        elif operator == ">":
+            return lambda x: x[this] > x[other]
+        elif operator == "<>":
+            return lambda x: x[this] != x[other]
+        elif operator == "<=":
+            return lambda x: x[this] <= x[other]
+        elif operator == ">=":
+            return lambda x: x[this] >= x[other]
+  
+    @staticmethod
+    def compareV(this, operator, val):
+        if operator == '=':
+            return lambda x: x[this] == val
+        elif operator == '<':
+            return lambda x: x is not None and x[this] < val
+        elif operator == '>':
+            return lambda x: x is not None and x[this] > val
+        elif operator == '<>':
+            return lambda x: x[this] != val
+        elif operator == '<=':
+            return lambda x: x is not None and x[this] <= val
+        elif operator == '>=':
+            return lambda x: x is not None and x[this] >= val
+    
+    @staticmethod
+    def resultToValue(result: LookupOutput, is_in):
+        if len(result.headers) <= 1:
+            val = sum(result.data, ())
+            if not is_in:
+                if len(result.data) == 1:
+                    val, = val
+                    return val
+                raise ValueError("expect one value, get " + str(len(result.data)))
+            return val
+        raise SelectError("expect one column, get " + str(len(result.headers)))    
+    
     def shutdown(self):
         self.IM.close_manager()
         self.RM.shutdown()
@@ -64,15 +116,20 @@ class SystemManger:
         return
 
     def createDatabase(self, dbname: str):
-        # print("SM::CREATEDB", dbname)
         if dbname not in self.databaselist:
             path: Path = self.systemPath / dbname
             path.mkdir(parents=True)
             self.databaselist.append(dbname)
         else:
             print("OH NO")
-            raise DatabaseAlreadyExist("database name exists")
-        return
+            raise DatabaseAlreadyExist("this name exists")
+
+    def useDatabase(self, dbname: str):
+        if dbname in self.databaselist:
+            self.inUse = dbname
+            return LookupOutput(change_db=dbname) 
+        print("OH NO")
+        raise DatabaseNotExist("this name doesn't exist")
 
     def removeDatabase(self, dbname: str):
         if dbname in self.databaselist:
@@ -89,33 +146,20 @@ class SystemManger:
             path.rmdir()
             if self.inUse == dbname:
                 self.inUse = None
-                result = LookupOutput(change_db='None')
-                return result
+                return LookupOutput(change_db='None')
+        
         else:
             print("OH NO")
             raise DatabaseNotExist("this name doesn't exist")
 
-    def useDatabase(self, dbname: str):
-        if dbname in self.databaselist:
-            self.inUse = dbname
-            result = LookupOutput(change_db=dbname)
-            return result
-        print("OH NO")
-        raise DatabaseNotExist("this name doesn't exist")
-
     def getTablePath(self, table: str):
         self.checkInUse()
-        tablePath = self.systemPath / self.inUse / table
-        return str(tablePath) + ".table"
+        return str(self.systemPath / self.inUse / table) + ".table"
 
     def execute(self, sql):
-        # print("SM::Execute")
         class StringErrorListener(ErrorListener):
             def syntaxError(self, recognizer, offending_symbol, line, column, msg, e):
                 raise ParseCancellationException("line " + str(line) + ":" + str(column) + " " + msg)
-        
-        from antlr_SQLparser.SQLLexer import SQLLexer
-        from antlr_SQLparser.SQLParser import SQLParser
 
         self.visitor.get_time_delta()
         input_stream = InputStream(sql)
@@ -126,16 +170,13 @@ class SystemManger:
         parser = SQLParser(tokens)
         parser.removeErrorListeners()
         parser.addErrorListener(StringErrorListener())
-        # print("SM::Execute 1")
         try:
             tree = parser.program()
         except ParseCancellationException as e:
             ret = LookupOutput(None, None, str(e), cost=self.visitor.get_time_delta())
             return [ret]
         try:
-            # print("Before visit Tree")
             ret = self.visitor.visit(tree)
-            # print("atr visit Tree", ret)
             return ret
         except MyException as e:
             ret = LookupOutput(message=str(e), cost=self.visitor.get_time_delta())
@@ -150,21 +191,19 @@ class SystemManger:
                 result.append(file.stem)
         return result
 
-    def displayDataBaseNames(self):
-        result = []
-        rootDir: Path = self.systemPath
-        for dir in rootDir.iterdir():
-            if dir.is_dir():
-                result.append(dir.stem)
-        print("SM: dISPLAY db names", rootDir.name, result)
-        return result
-
-
     def fetchMetaHandler(self):
-        self.checkInUse()
         if self.metaHandlers.get(self.inUse) is None:
             self.metaHandlers[self.inUse] = MetaHandler(self.inUse, str(self.systemPath))
         return self.metaHandlers[self.inUse]
+
+    def displayDataBaseNames(self):
+        results = []
+        rootDir: Path = self.systemPath
+        for dir in rootDir.iterdir():
+            if dir.is_dir():
+                results.append(dir.stem)
+        print("SM: dISPLAY db names", rootDir.name, results)
+        return results
 
     def createTable(self, table: TableInfo):
         self.checkInUse()
@@ -191,33 +230,27 @@ class SystemManger:
         return metaHandler, metaHandler.collectTableInfo(table)
 
     def descTable(self, table: str):
-        head = ('Field', 'Type', 'Null', 'Key', 'Default', 'Extra')
-        data = self.collectTableinfo(table)[1].describe()
-        print("SYS_Manager::DESCRABLE", self.collectTableinfo(table)[1].index)
-        return LookupOutput(head, data)
+        return LookupOutput(('Field', 'Type', 'Null', 'Key', 'Default', 'Extra')
+                            , self.collectTableinfo(table)[1].describe()
+                            )
 
     def renameTable(self, src: str, dst: str):
         self.checkInUse()
         metaHandler = self.fetchMetaHandler()
         metaHandler.renameTable(src, dst)
-        srcFilename = self.getTablePath(src)
-        dstFilename = self.getTablePath(dst)
-        self.RM.renameFile(srcFilename, dstFilename)
-        return
-
+        self.RM.renameFile(self.getTablePath(src),self.getTablePath(dst))
+    
     def createIndex(self, index: str, table: str, col: str):
-        metaHandler: MetaHandler = None
         metaHandler, tableInfo = self.collectTableinfo(table)
         if index in metaHandler.databaseInfo.indexMap:
             print("OH NO")
             raise IndexAlreadyExist("this name exists")
         if col not in tableInfo.index:
-            # print(f"IM create_index {table, col}, {tableInfo.index}, {tableInfo.getColumnIndex(col)}")
+            print(f"IM create_index {table, col}, {tableInfo.index}")
             indexFile = self.IM.create_index(self.inUse, table)
             tableInfo.index[col] = indexFile.root
-            metaHandler.shutdown()
         else:
-            # print(f"IM create_index(already) {table, col}")
+            print(f"IM create_index(already) {table, col}")
             metaHandler.createIndex(index, table, col)
             return
         if tableInfo.getColumnIndex(col) is not None:
@@ -249,7 +282,7 @@ class SystemManger:
         return
 
     def addForeign(self, table: str, col: str, foreign, forName=None):
-        # print("add Foreign", table, col, foreign)
+        print("add Foreign", table, col, foreign)
         metaHandler, tableInfo = self.collectTableinfo(table)
         # if (table, col) not in metaHandler.databaseInfo.indexMap.values():
         #     raise AddForeignError(f"create index on this column first {table, col} [{list(metaHandler.databaseInfo.indexMap.values())}]")
@@ -262,8 +295,7 @@ class SystemManger:
                 self.createIndex(indexName, foreign[0], foreign[1])
         tableInfo.addForeign(col, foreign)
         metaHandler.shutdown()
-        return
-
+        
     def removeForeign(self, table, col, forName=None):
         metaHandler, tableInfo = self.collectTableinfo(table)
         if tableInfo.foreign.get(col) is not None:
@@ -276,7 +308,6 @@ class SystemManger:
         return None
 
     def removePrimary(self, table: str):
-        # todo: check foreign
         metaHandler, tableInfo = self.collectTableinfo(table)
         if tableInfo.primary:
             for column in tableInfo.primary:
@@ -284,22 +315,18 @@ class SystemManger:
                 if indexName in metaHandler.databaseInfo.indexMap:
                     self.removeIndex(indexName)
             metaHandler.removePrimary(table)
-        return
 
     def setPrimary(self, table: str, pri):
-        # print("SYSTEM::setPrimary", table, pri)
         self.checkInUse()
-        metaHandler:MetaHandler = self.fetchMetaHandler()
+        metaHandler = self.fetchMetaHandler()
         metaHandler.setPrimary(table, pri)
         if pri:
             for column in pri:
                 indexName = table + "." + column
-                # print("indexname", indexName, metaHandler.databaseInfo.indexMap)
                 if indexName not in metaHandler.databaseInfo.indexMap:
                     # import pdb; pdb.set_trace()
                     self.createIndex(indexName, table, column)
-        return
-
+    
     def addColumn(self, table: str, column, pri: bool, foreign: bool):
         self.checkInUse()
         metaHandler = self.fetchMetaHandler()
@@ -364,7 +391,7 @@ class SystemManger:
         self.RM.closeFile(copyTableFile)
         self.RM.replaceFile(copyTableFile, self.getTablePath(table))
         return
-
+    
     def insertRecord(self, table: str, val: list):
         self.checkInUse()
         metaHandler = self.fetchMetaHandler()
@@ -386,8 +413,7 @@ class SystemManger:
         self.handleInsertIndex(table, valTuple, rid)
         t4 = time.time()
         # print(f"insert{t2 - t1, t3 - t2, t4 - t3}")
-        return
-
+        
     def deleteRecords(self, table: str, limits: tuple):
         self.checkInUse()
         fileHandler = self.RM.openFile(self.getTablePath(table))
@@ -403,20 +429,16 @@ class SystemManger:
     def indexFilter(self, table: str, limits: tuple) -> set:
         self.checkInUse()
         metaHandler = self.fetchMetaHandler()
-        tableInfo: TableInfo = metaHandler.collectTableInfo(table)
-        # print("SystemManager::indexFilter", tableInfo.index)
-        condIndex = dict()
+        tableInfo = metaHandler.collectTableInfo(table)
+        condIndex = {}
 
         def build(limit: Term):
             if limit.type != 1:
-                # print("build ret 1")
                 return None
             if limit.table and limit.table != table:
-                # print("build ret 2")
                 return None
             limit_col = limit.col
             colIndex = tableInfo.getColumnIndex(limit_col)
-            # print(f"{colIndex is not None, limit.value is not None, limit.col in tableInfo.index, limit.col, tableInfo.index, tableInfo.name}")
             if colIndex is not None and limit.value is not None and limit.col in tableInfo.index:
                 lo, hi = condIndex.get(limit.col, (-1 << 31 + 1, 1 << 31))
                 tmp = limit.value
@@ -441,35 +463,21 @@ class SystemManger:
                 condIndex[limit.col] = lower, upper
 
 
-
-        for i, limit in enumerate(limits):
-            # print(i, limit.type, limit.table, table, limit.col, limit.operator)
-            build(limit)
-        # tuple(map(build, limits))
-
-        # print("IndexFilter::condIndex", condIndex, limits)
-        
-        # import time; t1 = time.time()
         results = None
+        tuple(map(build, limits))
+
+        # print("IndexFilter::condIndex", condIndex)
+        
+        import time; t1 = time.time()
         for col in condIndex:
-            # print("condIndex", col, condIndex)
             if results is not None:
                 lo, hi = condIndex.get(col)
                 index = self.IM.start_index(self.inUse, table, tableInfo.index[col])
-                import time; t1 = time.time()
-                new_results = set(index.range(lo, hi))
-                t2 = time.time()
-                # if self.count % 1000 == 0:
-                #     print("INDEX FILTER TIME(add) ", self.count, t2 - t1, condIndex, col, (lo, hi), len(new_results))
-                results = results & new_results
+                results = results & set(index.range(lo, hi))
             else:
                 lo, hi = condIndex.get(col)
                 index = self.IM.start_index(self.inUse, table, tableInfo.index[col])
-                import time; t1 = time.time()
                 results = set(index.range(lo, hi))
-                t2 = time.time()
-                # if self.count % 1000 == 0:
-                #     print("INDEX FILTER TIME ", self.count, t2 - t1, condIndex, col, (lo, hi), len(results))
         # t2 = time.time(); print("INDEX FILTER TIME ", len(condIndex), t2 - t1)
         return results
 
@@ -498,17 +506,11 @@ class SystemManger:
         metaHandler = self.fetchMetaHandler()
         tableInfo = metaHandler.collectTableInfo(table)
         functions = self.buildConditionsFuncs(table, limits, metaHandler)
-        import time; t1 =time.time()
         index_filter = self.indexFilter(table, limits)
-        # t2 = time.time(); print("indexFilter", t2 - t1, len(limits), index_filter)
         fileHandler: FileHandler = self.RM.openFile(self.getTablePath(table))
         records = []
         data = []
-        # if self.count % 1000 == 0:
-        #     if index_filter is not None:
-        #         print("IDX FIL", len(index_filter), limits, table)
-        #     else:
-        #         print("None!!!!!!", limits, table)
+        # print("IDX FIL", index_filter, index_filter is not None)
         if index_filter is not None: # is not None:
             iterator = map(fileHandler.getRecord, index_filter)
             for record in iterator:
@@ -524,20 +526,14 @@ class SystemManger:
                     records.append(record)
                     old_valTuple = valTuple
                     data.append(valTuple)
-            # print("ELSE", tableInfo.index)
+            # print("ELSE", records)
         return records, data
 
-    def checkAnyUnique(self, table: str, pairs, thisRID: RID = None, fromCheck = False):
+    def checkAnyUnique(self, table: str, pairs, thisRID: RID = None):
         conds = []
         for col in pairs:
             conds.append(Term(1, table, col, '=', value=pairs.get(col)))
-        import time; t1 =time.time();
         records, data = self.searchRecordIndex(table, tuple(conds))
-        # if fromCheck:
-        #     self.count += 1; t2 = time.time()
-        #     if self.count % 5000 == 0:
-        #         print("pairs", pairs, "time", t2 - t1)
-        # t2 = time.time(); print("searchRecordIndex", t2 - t1, pairs, tuple(conds))
         if len(records) <= 1:
             if records and records[0].rid == thisRID:
                 return False
@@ -556,24 +552,15 @@ class SystemManger:
             return result
 
     def checkPrimary(self, table: str, colVals, thisRID: RID = None):
-        # if table == "LINEITEM":
-        #     return False
         self.checkInUse()
         metaHandler = self.fetchMetaHandler()
         tableInfo = metaHandler.collectTableInfo(table)
-        ret = False
         if tableInfo.primary:
             pairs = {}
             for col in tableInfo.primary:
-                # print("col", col)
                 pairs[col] = colVals[tableInfo.getColumnIndex(col)]
-            import time; t1 = time.time()
-            ret = self.checkAnyUnique(table, pairs, thisRID, True)
-            t2 = time.time()
-            # self.count += 1
-            # if self.count % 5000 == 0:
-            #     print("pairs", pairs, colVals, "time", t2 - t1)
-        return ret
+            return self.checkAnyUnique(table, pairs, thisRID)
+        return False
 
     def checkUnique(self, table: str, colVals, thisRID: RID = None):
         self.checkInUse()
@@ -582,9 +569,8 @@ class SystemManger:
         if tableInfo.unique:
             for col in tableInfo.unique:
                 pairs = {col: colVals[tableInfo.getColumnIndex(col)]}
-                res = self.checkAnyUnique(table, pairs, thisRID)
-                if res:
-                    return res
+                if self.checkAnyUnique(table, pairs, thisRID):
+                    return self.checkAnyUnique(table, pairs, thisRID)
         return False
 
     def checkForeign(self, table: str, colVals):
@@ -612,28 +598,25 @@ class SystemManger:
         return False
 
     def checkInsertConstraint(self, table: str, colVals, thisRID: RID = None):
-        
         import time
         t1 = time.time()
-        # self.count += 1
 
         if self.checkForeign(table, colVals):
             miss = self.checkForeign(table, colVals)
             print("OH NO")
             raise MissForeignKeyError("miss: " + str(miss[0]) + ": " + str(miss[1]))
         t2 = time.time()
-        if self.checkPrimary(table, colVals, thisRID):
-            dup = self.checkPrimary(table, colVals, thisRID)
-            print("OH NO")
-            raise DuplicatedPrimaryKeyError("duplicated: " + str(dup[0]) + ": " + str(dup[1]))
+        # if self.checkPrimary(table, colVals, thisRID):
+        #     dup = self.checkPrimary(table, colVals, thisRID)
+        #     print("OH NO")
+        #     raise DuplicatedPrimaryKeyError("duplicated: " + str(dup[0]) + ": " + str(dup[1]))
         t3 = time.time()
         if self.checkUnique(table, colVals, thisRID):
             dup = self.checkUnique(table, colVals, thisRID)
             print("OH NO")
             raise DuplicatedUniqueKeyError("duplicated: " + str(dup[0]) + ": " + str(dup[1]))
         t4 = time.time()
-        # if self.count % 5000 == 0:
-        #     print(f"insert{t2 - t1, t3 - t2, t4 - t3}")
+        # print(f"insert{t2 - t1, t3 - t2, t4 - t3}")
         return
 
     def checkRemoveColumn(self, table: str, col: str):
@@ -676,7 +659,7 @@ class SystemManger:
                 tableInfo.index[col] = ret
                 metaHandler.shutdown()
                 self.IM.update_index(table, old_root_id, ret)
-                # print(col, metaHandler.collectTableInfo(table).index[col])
+                print(col, metaHandler.collectTableInfo(table).index[col])
         return
 
     def handleRemoveIndex(self, table: str, data: tuple, rid: RID):
@@ -776,7 +759,6 @@ class SystemManger:
 
         def getSelected(col2data):
             col2data['*.*'] = next(iter(col2data.values()))
-            print("col2data", col2data, [str(i) for i in reducers])
             return tuple(map(lambda x: x.select(col2data[x.target()]), reducers))
 
         col2tab = metaHandler.getColumn2Table(tables)
@@ -879,63 +861,3 @@ class SystemManger:
         headers = tuple(tableInfo.name + "." + colName for colName in tableInfo.columnMap.keys())
         return LookupOutput(headers, data)
 
-    @staticmethod
-    def resultToValue(result: LookupOutput, is_in):
-        if len(result.headers) <= 1:
-            val = sum(result.data, ())
-            if not is_in:
-                if len(result.data) == 1:
-                    val, = val
-                    return val
-                raise ValueError("expect one value, get " + str(len(result.data)))
-            return val
-        raise SelectError("expect one column, get " + str(len(result.headers)))
-
-    @staticmethod
-    def printResults(result: LookupOutput):
-        TablePrinter().print([result])
-
-    @staticmethod
-    def compare(this, operator, other):
-        if operator == "<":
-            return lambda x: x[this] < x[other]
-        elif operator == "<=":
-            return lambda x: x[this] <= x[other]
-        elif operator == ">":
-            return lambda x: x[this] > x[other]
-        elif operator == ">=":
-            return lambda x: x[this] >= x[other]
-        elif operator == "<>":
-            return lambda x: x[this] != x[other]
-        elif operator == "=":
-            return lambda x: x[this] == x[other]
-
-    @staticmethod
-    def compareV(this, operator, val):
-        if operator == '<':
-            return lambda x: x is not None and x[this] < val
-        elif operator == '<=':
-            return lambda x: x is not None and x[this] <= val
-        elif operator == '>':
-            return lambda x: x is not None and x[this] > val
-        elif operator == '>=':
-            return lambda x: x is not None and x[this] >= val
-        elif operator == '<>':
-            return lambda x: x[this] != val
-        elif operator == '=':
-            return lambda x: x[this] == val
-
-    @staticmethod
-    def buildPattern(pat: str):
-        pat = pat.replace('%%', '\r')
-        pat = pat.replace('%?', '\n')
-        pat = pat.replace('%_', '\0')
-        pat = re.escape(pat)
-        pat = pat.replace('%', '.*')
-        pat = pat.replace(r'\?', '.')
-        pat = pat.replace('_', '.')
-        pat = pat.replace('\r', '%')
-        pat = pat.replace('\n', r'\?')
-        pat = pat.replace('\0', '_')
-        pat = re.compile('^' + pat + '$')
-        return pat

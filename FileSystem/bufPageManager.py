@@ -123,7 +123,9 @@ class BufPageManager(FileManager):
         dirty_ids = np.arange(CAP)[self.dirty]
         for idx in dirty_ids:
             self.write_back(idx)
-        for fileID in self.file_cache_pages.keys():
+        dict_copy = self.file_cache_pages.copy()
+        keys = dict_copy.keys()
+        for fileID in keys:
             self.close_file(fileID)
         self.reset()
 
