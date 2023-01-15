@@ -6,6 +6,7 @@ import numpy as np
 import struct
 from numbers import Number
 from datetime import date
+from utils.exception import TableError
 
 class TableInfo:
     

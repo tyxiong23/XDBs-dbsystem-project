@@ -137,13 +137,12 @@ class SystemManger:
 
     def exmineIfActive(self):
         if self.inUse is None:
-            print("OH NO")
-            raise NoDatabaseInUse("use a database first")
+            raise NoDatabaseSelected("use a database first")
         return
 
     def cond_join(self, res_map: dict, term):
         if self.inUse is None:
-            raise ValueError("No using database!!!")
+            raise ValueError("Not using database!!!")
         else:
             join = Join(res_map=res_map, term=term)
             result: LookupOutput = join.get_output()
@@ -155,15 +154,13 @@ class SystemManger:
             path.mkdir(parents=True)
             self.databaselist.append(dbname)
         else:
-            print("OH NO")
             raise DatabaseAlreadyExist("this name exists")
 
     def db_change(self, dbname: str):
         if dbname in self.databaselist:
             self.inUse = dbname
             return LookupOutput(change_db=dbname) 
-        print("OH NO")
-        raise DatabaseNotExist("this name doesn't exist")
+        raise DatabaseNotExist(f"this name doesn't exist {dbname}")
 
     def db_delete(self, dbname: str):
         if dbname in self.databaselist:
@@ -183,8 +180,7 @@ class SystemManger:
                 return LookupOutput(change_db='None')
         
         else:
-            print("OH NO")
-            raise DatabaseNotExist("this name doesn't exist")
+            raise DatabaseNotExist(f"this name doesn't exist {dbname}")
 
     def db_showNames(self):
         results = []
@@ -248,14 +244,13 @@ class SystemManger:
     def idx_create(self, index: str, table: str, col: str):
         metaHandler, tableInfo = self.tb_info(table)
         if index in metaHandler.databaseInfo.indexMap:
-            print("OH NO")
             raise IndexAlreadyExist("this name exists")
         if col not in tableInfo.index:
-            print(f"IM create_index {table, col}, {tableInfo.index}")
+            # print(f"IM create_index {table, col}, {tableInfo.index}")
             indexFile = self.IM.create_index(self.inUse, table)
             tableInfo.index[col] = indexFile.root
         else:
-            print(f"IM create_index(already) {table, col}")
+            # print(f"IM create_index(already) {table, col}")
             metaHandler.idx_create(index, table, col)
             return
         if tableInfo.index_get(col) is not None:
@@ -265,7 +260,6 @@ class SystemManger:
                 indexFile.insert(recordData[colIndex], record.rid)
             metaHandler.idx_create(index, table, col)
         else:
-            print("OH NO")
             raise ColumnNotExist(col + "doesn't exist")
 
     def idx_delete(self, index: str):
@@ -452,13 +446,11 @@ class SystemManger:
         if pri:
             for co in column:
                 if tableInfo.index_get(co) is None:
-                    print("OH NO")
                     raise ColumnNotExist(co + " doesn't exist")
             self.primary_set(table, column)
         elif foreign:
             co = column[0]
             if tableInfo.index_get(co) is None:
-                print("OH NO")
                 raise ColumnNotExist(co + " doesn't exist")
             self.foreign_add(table, co, (column[1], column[2]), None)
         else:
@@ -466,7 +458,6 @@ class SystemManger:
                 raise AddError("unsupported add")
             col = column
             if tableInfo.index_get(col.name):
-                print("OH NO")
                 raise ColumnNotExist(col.name + " doesn't exist")
             oldTableInfo: TableInfo = deepcopy(tableInfo)
             metaHandler.databaseInfo.col_insert(table, col)
@@ -491,7 +482,6 @@ class SystemManger:
         self.remove_clo_check(table, col)
         tableInfo = metaHandler.tb_info(table)
         if col not in tableInfo.columnIndex:
-            print("OH NO")
             raise ColumnNotExist(col + " doesn't exist")
         oldTableInfo: TableInfo = deepcopy(tableInfo)
         colIndex = tableInfo.index_get(col)
@@ -688,7 +678,6 @@ class SystemManger:
             elif records:
                 return (tuple(pairs.keys()), tuple(pairs.values()))
             return False
-        print("OH NO")
         raise CheckAnyUniqueError("get " + str(len(records)) + " same")
 
     def check_uniques(self, table: str, colVals, thisRID: RID = None):
@@ -743,18 +732,15 @@ class SystemManger:
 
         if self.foreign_check(table, colVals):
             miss = self.foreign_check(table, colVals)
-            print("OH NO")
-            raise MissForeignKeyError("miss: " + str(miss[0]) + ": " + str(miss[1]))
+            raise MissForeignKey("miss: " + str(miss[0]) + ": " + str(miss[1]))
         t2 = time.time()
         if self.primary_check(table, colVals, thisRID):
             dup = self.primary_check(table, colVals, thisRID)
-            print("OH NO")
-            raise DuplicatedPrimaryKeyError("duplicated: " + str(dup[0]) + ": " + str(dup[1]))
+            raise DuplicatedPrimaryKey("duplicated: " + str(dup[0]) + ": " + str(dup[1]))
         t3 = time.time()
         if self.check_uniques(table, colVals, thisRID):
             dup = self.check_uniques(table, colVals, thisRID)
-            print("OH NO")
-            raise DuplicatedUniqueKeyError("duplicated: " + str(dup[0]) + ": " + str(dup[1]))
+            raise DuplicatedUniqueKey("duplicated: " + str(dup[0]) + ": " + str(dup[1]))
         t4 = time.time()
         # print(f"insert{t2 - t1, t3 - t2, t4 - t3}")
         return
@@ -801,7 +787,7 @@ class SystemManger:
                     else:
                         if colType == "DATE":
                             if type(limit.value) not in (str, date):
-                                raise ValueTypeError("need str/date here")
+                                raise ValueTypeMisMatched("need str/date here")
                             val = limit.value
                             if type(val) is date:
                                 return self.versusV(colIndex, limit.operator, val)
@@ -810,12 +796,12 @@ class SystemManger:
                         elif colType in ("INT", "FLOAT"):
                             if isinstance(limit.value, (int, float)):
                                 return self.versusV(colIndex, limit.operator, limit.value)
-                            raise ValueTypeError("need int/float here")
+                            raise ValueTypeMisMatched("need int/float here")
                         elif colType == "VARCHAR":
                             if isinstance(limit.value, str):
                                 return self.versusV(colIndex, limit.operator, limit.value)
-                            raise ValueTypeError("need varchar here")
-                        raise ValueTypeError("limit value error")
+                            raise ValueTypeMisMatched("need varchar here")
+                        raise ValueTypeMisMatched("limit value error")
                 elif limit.type == 2:
                     if colType == "DATE":
                         values = []
@@ -825,20 +811,20 @@ class SystemManger:
                                 values.append(date(*map(int, valist)))
                             elif type(val) is date:
                                 values.append(val)
-                            raise ValueTypeError("need str/date here")
+                            raise ValueTypeMisMatched("need str/date here")
                         return lambda x: x[colIndex] in tuple(values)
                     return lambda x: x[colIndex] in limit.value
                 elif limit.type == 3:
                     if colType == "VARCHAR":
                         return lambda x: self.pattern_setup(limit.value).match(str(x[colIndex]))
-                    raise ValueTypeError("like need varchar here")
+                    raise ValueTypeMisMatched("like need varchar here")
                 elif limit.type == 0:
                     if isinstance(limit.value, bool):
                         if limit.value:
                             return lambda x: x[colIndex] is None
                         return lambda x: x[colIndex] is not None
-                    raise ValueTypeError("limit value need bool here")
-                raise ValueTypeError("limit type unknown")
+                    raise ValueTypeMisMatched("limit value need bool here")
+                raise ValueTypeMisMatched("limit type unknown")
             raise ColumnNotExist("limit column name unknown")
 
         results = []

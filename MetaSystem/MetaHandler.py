@@ -2,6 +2,7 @@
 from .basicClass.Column import *
 from .basicClass.Table import *
 from .basicClass.Database import *
+from utils.exception import *
 import pickle as pic
 import os
 
@@ -51,7 +52,7 @@ class MetaHandler:
     
     def idx_rename(self, src: str, dst: str):
         if self.databaseInfo.indexMap.get(src) is None:
-            print("WRONG----NAME DOES NOT EXIST")
+            raise MetaHandlerError(f"WRONG----INDEX RENAME {src} NAME DOES NOT EXIST")
             return
         self.databaseInfo.indexMap[dst] = self.databaseInfo.indexMap.pop(src)
         self.path_update()
@@ -74,13 +75,13 @@ class MetaHandler:
 
     def tb_info(self, table: str):
         if self.databaseInfo.tableMap.get(table) is None:
-            print("WRONG----NAME DOES NOT EXIST")
+            raise MetaHandlerError(f"WRONG----TABLE {table} NAME DOES NOT EXIST")
             return
         return self.databaseInfo.tableMap[table]
 
     def tb_rename(self, src: str, dst: str):
         if self.databaseInfo.tableMap.get(src) is None:
-            print("WRONG----NAME DOES NOT EXIST")
+            raise MetaHandlerError(f"WRONG----TABLE RENAME {src} NAME DOES NOT EXIST")
             return
         self.databaseInfo.tableMap[dst] = self.databaseInfo.tableMap.pop(src)
         indexMap = self.databaseInfo.indexMap

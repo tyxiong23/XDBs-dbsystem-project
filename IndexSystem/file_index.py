@@ -90,7 +90,7 @@ class FileIndex:
         elif node_type == LEAF_NODE_TYPE:
             res: LeafNode = self.build_leaf_node(page_id, page_data, depth=depth)
         else:
-            raise ValueError('node type error!')
+            raise ValueError(f'node type error! {node_type}')
         return res
 
     def build_leaf_node(self, page_id, data: np.ndarray, depth):

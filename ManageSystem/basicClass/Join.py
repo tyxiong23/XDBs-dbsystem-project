@@ -1,5 +1,6 @@
 from .Term import Term
 from OutputSystem.basicClass.outputUnit import LookupOutput
+from utils.exception import JoinError
 
 class Join:
     def __init__(self, res_map: dict, term, union=None):
@@ -15,7 +16,7 @@ class Join:
     @staticmethod
     def check_join(len_outside_joined, len_inside_joined):
         if len_outside_joined != len_inside_joined:
-            print("WRONG----JOIN ERROR")
+            raise JoinError(f"WRONG----JOIN ERROR {len_outside_joined} != {len_inside_joined}")
     
     def create_pair(self, term: Term):
         if term.aim_table is None:
@@ -27,8 +28,7 @@ class Join:
                     sorted_pairs = zip(*sorted(pairs))
                     return tuple(sorted_pairs)
                 else:
-                    print("WRONG----Join CREATE PAIR ERROR")
-                    return
+                    raise JoinError(f"WRONG----Join CREATE PAIR ERROR term.operator{term.operator}")
             else:
                 return None, None
 
@@ -41,8 +41,7 @@ class Join:
                     self._join_map[key][0].append(elems[0])
                     self._join_map[key][1].append(elems[1])    
         if not self._join_map:
-            print("WRONG----Join TABLES ERROR")
-            return
+            raise JoinError("WRONG----Join TABLES ERROR: not self._join_map")
         self._union = {key: key for key in self.res_map.keys()}
 
     def union_search(self, element):

@@ -2,6 +2,7 @@ from utils.constants import *
 import numpy as np
 import os
 
+from utils.exception import *
 
 class FileManager:
     def __init__(self) -> None:
@@ -11,13 +12,16 @@ class FileManager:
 
     def create_file(self, name: str):
         f = open(name, "w")
-        assert f is not None, f"Fail to create file [{name}]!!"
-        f.close()
+        if f is None:
+            raise CreateFileError(F"Fail to create file [{name}]!!")
+        else:
+            f.close()
         pass
     
     def open_file(self, name: str):
         fileID: int = os.open(name, self.OPEN_FILE_MOD)
-        assert fileID != -1, f"Cannot open file [{name}]"
+        if fileID == -1:
+            raise OpenFileError(f"Cannot open file [{name}]")
         return fileID
 
     def remove_file(self, name: str):
@@ -37,7 +41,8 @@ class FileManager:
     def read_page(self, fileID: int, pageID: int):
         os.lseek(fileID, pageID << PAGE_SIZE_BITS, os.SEEK_SET)
         error = os.read(fileID, PAGE_SIZE)
-        assert error is not None, f"Cannot read page {pageID} in file {fileID}!!"
+        if error is None:
+            raise ReadPageError(f"Cannot read page {pageID} in file {fileID}!!")
         return error
 
     def close_file(self, fileID: int):

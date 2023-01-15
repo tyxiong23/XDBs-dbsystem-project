@@ -1,86 +1,95 @@
+# base class
 class XdbException(Exception):
     def __str__(self) -> str:
         super_str = super().__str__()
         return "[XdbError::"  + str(self.__class__.__name__) + "] " + super_str
 
-class FailCreateError(XdbException):
+# file error
+class XdbFileException(XdbException):
     pass
 
-class FailOpenError(XdbException):
+class CreateFileError(XdbFileException):
     pass
 
-class FailReadPageError(XdbException):
+class OpenFileError(XdbFileException):
     pass
 
-class RecordTooLong(XdbException):
+class ReadPageError(XdbFileException):
     pass
 
-class ColumnNotExist(XdbException):
-    pass
 
-class ValueNumError(XdbException):
-    pass
-
-class VarcharTooLong(XdbException):
-    pass
-
-class ValueTypeError(XdbException):
-    pass
-
-class TableAlreadyExist(XdbException):
-    pass
-
-class TableNotExist(XdbException):
-    pass
-
-class IndexAlreadyExist(XdbException):
-    pass
-
-class IndexNotExist(XdbException):
-    pass
-
-class DatabaseAlreadyExist(XdbException):
-    pass
-
-class DatabaseNotExist(XdbException):
-    pass
-
-class NoDatabaseInUse(XdbException):
-    pass
-
-class CheckAnyUniqueError(XdbException):
-    pass
-
-class DuplicatedPrimaryKeyError(XdbException):
-    pass
-
-class DuplicatedUniqueKeyError(XdbException):
-    pass
-
-class MissForeignKeyError(XdbException):
-    pass
-
-class SameNameError(XdbException):
-    pass
-
-class SelectError(XdbException):
-    pass
-
-class DateValueError(XdbException):
-    pass
-
+# Operation Error
 class JoinError(XdbException):
     pass
 
-class AddForeignError(XdbException):
+class ReducerError(XdbException):
     pass
 
-class RemoveError(XdbException):
+
+# metaSystemError
+class MetaSystemException(XdbException):
     pass
 
-class AddError(XdbException):
+class MetaHandlerError(MetaSystemException):
     pass
+
+class TableError(MetaSystemException):
+    pass
+
+class DatabaseError(MetaSystemException):
+    pass
+
+# systemManagerError
+class SystemManagerException(XdbException):
+    pass
+
+class ColumnNotExist(SystemManagerException):
+    pass
+
+class IndexAlreadyExist(SystemManagerException):
+    pass
+
+class NoDatabaseSelected(SystemManagerException):
+    pass
+
+class DatabaseNotExist(SystemManagerException):
+    pass
+
+class DatabaseAlreadyExist(SystemManagerException):
+    pass
+
+
+class ValueTypeMisMatched(SystemManagerException):
+    pass
+
+
+class DuplicatedPrimaryKey(SystemManagerException):
+    pass
+
+class DuplicatedUniqueKey(SystemManagerException):
+    pass
+
+class MissForeignKey(SystemManagerException):
+    pass
+
+class CheckAnyUniqueError(SystemManagerException):
+    pass
+
+class AddError(SystemManagerException):
+    pass
+
+class SameNameError(SystemManagerException):
+    pass
+
+class SelectError(SystemManagerException):
+    pass
+
+class RemoveError(SystemManagerException):
+    pass
+
+
 
 if __name__ == "__main__":
     a = AddError()
     print(a)
+    assert 0 == 1, CreateFileError("Fail to create file [{name}]!!")

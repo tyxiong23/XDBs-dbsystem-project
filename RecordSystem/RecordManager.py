@@ -48,7 +48,7 @@ class RecordManager:
         return self.opened[name]
    
     def file_close(self, name: str):
-        print("RecordManager::closeFIle", name)
+        # print("RecordManager::closeFIle", name)
         if self.opened.get(name) is None:
             return
         handler = self.opened.get(name)

@@ -50,7 +50,7 @@ class InterNode(BasicNode):
                     new_node = LeafNode(new_page_id, self.page_id, node.page_id, new_page_id, rightchild_keys, rightchild_vals, self.index_handler, self.depth+1)
                     self.child_vals.insert(pos, new_node)
                 else:
-                    raise ValueError('node_type error!')
+                    raise ValueError(f'node_type error! {node._node_type}')
                 return None
 
 

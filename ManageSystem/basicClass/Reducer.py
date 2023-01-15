@@ -1,4 +1,5 @@
-# TODO:modified
+from utils.exception import ReducerError
+
 class Reducer:
     """reducer_type:0 is all
                     1 is field
@@ -33,7 +34,7 @@ class Reducer:
             try:
                 return func[self._aggregator](tuple(filter(lambda x: x is not None, data)))
             except TypeError:
-                print("WRONG----incorrect value type for aggregation")
+                raise ReducerError("WRONG----incorrect value type for aggregation")
                 return
         
         elif self._reducer_type == 3:
