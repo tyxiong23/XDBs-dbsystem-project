@@ -133,7 +133,7 @@ class SystemManger:
 
     def removeDatabase(self, dbname: str):
         if dbname in self.databaselist:
-            self.IM.shut_handler(dbname)
+            self.IM.close_handler(dbname)
             if self.metaHandlers.get(dbname) is not None:
                 self.metaHandlers.pop(dbname).shut_down()
             path: Path = self.systemPath / dbname

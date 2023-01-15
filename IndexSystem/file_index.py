@@ -40,7 +40,7 @@ class FileIndex:
             return None
 
         else:
-            print(f"NEW FATHRE NODE!!!!!! (_root, {self.root}, root_node.page {self.root_node.page_id,}, root_node.father {self.root_node.father_id})", node_page_size)
+            print(f"NEW FATHRE NODE!!!!!! (_root, {self.root_id}, root_node.page {self.root_node.page_id,}, root_node.father {self.root_node.father_id})", node_page_size)
             new_left_id = self.index_handler.new_page()
             new_right_id = self.index_handler.new_page()
             
@@ -119,7 +119,7 @@ class FileIndex:
     def build_index_tree(self):
         page_data: np.ndarray = self.index_handler.get_page(self.root_id)
         page_data.dtype = np.int64
-        assert (page_data[1] == self.root_id), f'FileIndex::build index tree error!!! root {self.root, page_data[1]} page{page_data.shape}'
+        assert (page_data[1] == self.root_id), f'FileIndex::build index tree error!!! root {self.root_id, page_data[1]} page{page_data.shape}'
         self.root_node = self.build_node(page_id=self.root_id)
 
 

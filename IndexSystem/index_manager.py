@@ -66,3 +66,16 @@ class IndexManager:
                     else:
                         break
         return None
+    
+    def close_handler(self, dbname):
+        if dbname in self.db2indexHandler:
+            index_handler = self.db2indexHandler.pop(dbname)
+            dict_copy = self.FIDX2fileIndex.copy()
+            copy_keys = dict_copy.keys()
+            for key in copy_keys:
+                if key in self.FIDX2fileIndex:
+                    tmp_file_index = self.FIDX2fileIndex.pop(key)
+                    if tmp_file_index.dirty:
+                        tmp_file_index.write_back()
+                else:
+                    break

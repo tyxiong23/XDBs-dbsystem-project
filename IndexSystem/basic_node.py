@@ -81,5 +81,5 @@ class BasicNode:
         right_child_vals = self.child_vals[mid:]
         self.child_vals = self.child_vals[:mid]
         self.child_keys = self.child_keys[:mid]
-        left_max = self.child_key_list[-1]
+        left_max = self.child_keys[-1]
         return right_child_keys, right_child_vals, left_max
