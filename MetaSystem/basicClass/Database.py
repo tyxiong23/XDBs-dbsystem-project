@@ -1,5 +1,5 @@
 
-from Exceptions.exception import *
+from utils.exception import *
 from utils.constants import *
 from .Column import ColumnInfo
 from .Table import TableInfo

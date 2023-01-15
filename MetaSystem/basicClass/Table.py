@@ -1,6 +1,6 @@
 from RecordSystem.basicClass.record import Record
 from .Column import ColumnInfo
-from Exceptions.exception import *
+from utils.exception import *
 from utils.constants import *
 import numpy as np
 import struct

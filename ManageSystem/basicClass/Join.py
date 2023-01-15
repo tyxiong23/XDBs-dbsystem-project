@@ -1,7 +1,5 @@
-# TODO:modified
 from .Term import Term
 from OutputSystem.basicClass.outputUnit import LookupOutput
-# from Exceptions.exception import JoinError
 
 class Join:
     def __init__(self, res_map: dict, term, union=None):

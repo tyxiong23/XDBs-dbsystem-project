@@ -15,7 +15,7 @@ from MetaSystem.basicClass.Table import TableInfo
 from MetaSystem.basicClass.Column import ColumnInfo
 from OutputSystem.TablePrinter import *
 from utils.constants import *
-from Exceptions.exception import *
+from utils.exception import *
 from pathlib import Path
 from .basicClass.Join import Join
 from antlr4 import InputStream, CommonTokenStream
@@ -404,8 +404,6 @@ class SystemManger:
     def foreign_add(self, table: str, col: str, foreign, forName=None):
         print("add Foreign", table, col, foreign)
         metaHandler, tableInfo = self.tb_info(table)
-        # if (table, col) not in metaHandler.databaseInfo.indexMap.values():
-        #     raise AddForeignError(f"create index on this column first {table, col} [{list(metaHandler.databaseInfo.indexMap.values())}]")
         if forName:
             if forName not in metaHandler.databaseInfo.indexMap:
                 self.idx_create(forName, foreign[0], foreign[1])
