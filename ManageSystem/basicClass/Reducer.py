@@ -54,6 +54,9 @@ class Reducer:
         elif self._reducer_type == 3:
             return f'COUNT(*)'
 
+    def __str__(self) -> str:
+        return f"{self.reducer_type, self._table_name, self._col, self._aggregator}"
+
 
         
         

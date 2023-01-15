@@ -35,7 +35,7 @@ import re
 
 
 class SystemManger:
-    def __init__(self, visitor, syspath: Path, bm: BufPageManager, rm: RecordManager, im: IndexManager, new_v = True):
+    def __init__(self, visitor, syspath: Path, bm: BufPageManager, rm: RecordManager, im: IndexManager):
         self.visitor = visitor
         self.systemPath = syspath
         self.BM = bm
@@ -48,7 +48,6 @@ class SystemManger:
         self.inUse = None
         self.visitor.setManager(self)
         self.count = 0
-        self.new_v = new_v
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.shutdown()
@@ -114,12 +113,9 @@ class SystemManger:
         class StringErrorListener(ErrorListener):
             def syntaxError(self, recognizer, offending_symbol, line, column, msg, e):
                 raise ParseCancellationException("line " + str(line) + ":" + str(column) + " " + msg)
-        if self.new_v:
-            from antlr_SQLparser.SQLLexer import SQLLexer
-            from antlr_SQLparser.SQLParser import SQLParser
-        else:
-            from SQL_parser1.SQLLexer import SQLLexer
-            from SQL_parser1.SQLParser import SQLParser
+        
+        from antlr_SQLparser.SQLLexer import SQLLexer
+        from antlr_SQLparser.SQLParser import SQLParser
 
         self.visitor.get_time_delta()
         input_stream = InputStream(sql)
@@ -780,6 +776,7 @@ class SystemManger:
 
         def getSelected(col2data):
             col2data['*.*'] = next(iter(col2data.values()))
+            print("col2data", col2data, [str(i) for i in reducers])
             return tuple(map(lambda x: x.select(col2data[x.target()]), reducers))
 
         col2tab = metaHandler.getColumn2Table(tables)

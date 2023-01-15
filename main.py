@@ -3,8 +3,7 @@ from argparse import ArgumentParser, Namespace
 import os, stat, sys
 from OutputSystem.TablePrinter import TablePrinter
 from OutputSystem.CSVPrinter import CSVPrinter
-from ManageSystem.system_visitor1 import SystemVistor1
-from ManageSystem.system_visitor import SystemVisitor
+from ManageSystem.system_visitor import SystemVistor
 from ManageSystem.system_manager import SystemManger
 from FileSystem.bufPageManager import BufPageManager
 from RecordSystem.RecordManager import RecordManager
@@ -28,9 +27,8 @@ if __name__ == '__main__':
         printer = TablePrinter()
     elif args.printer == 'csv':
         printer = CSVPrinter()
-    newSV = True
     
-    v = SystemVistor1 if newSV else SystemVisitor
+    v = SystemVistor
     visitor = v()
     syspath = Path(args.base)
     # FM = FileManager()
@@ -38,7 +36,7 @@ if __name__ == '__main__':
     BM = BufPageManager()
     RM = RecordManager(BM)
     IM = IndexManager(BM, syspath)
-    manager = SystemManger(visitor, syspath, BM, RM, IM, newSV)
+    manager = SystemManger(visitor, syspath, BM, RM, IM)
     if args.database:
         manager.useDatabase(args.database)
     if args.file:

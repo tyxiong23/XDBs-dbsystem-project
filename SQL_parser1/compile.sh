@@ -1,1 +1,0 @@
-java -jar antlr-4.9.2-complete.jar -Dlanguage=Python3 SQL.g4 -visitor -no-listener
