@@ -1,84 +1,81 @@
 
-class MyException(Exception):
+class XdbException(Exception):
     pass
 
-class FailCreateError(MyException):
+class FailCreateError(XdbException):
     pass
 
-class FailOpenError(MyException):
+class FailOpenError(XdbException):
     pass
 
-class FailReadPageError(MyException):
+class FailReadPageError(XdbException):
     pass
 
-class RecordTooLong(MyException):
+class RecordTooLong(XdbException):
     pass
 
-class ColumnAlreadyExist(MyException):
+class ColumnNotExist(XdbException):
     pass
 
-class ColumnNotExist(MyException):
+class ValueNumError(XdbException):
     pass
 
-class ValueNumError(MyException):
+class VarcharTooLong(XdbException):
     pass
 
-class VarcharTooLong(MyException):
+class ValueTypeError(XdbException):
     pass
 
-class ValueTypeError(MyException):
+class TableAlreadyExist(XdbException):
     pass
 
-class TableAlreadyExist(MyException):
+class TableNotExist(XdbException):
     pass
 
-class TableNotExist(MyException):
+class IndexAlreadyExist(XdbException):
     pass
 
-class IndexAlreadyExist(MyException):
+class IndexNotExist(XdbException):
     pass
 
-class IndexNotExist(MyException):
+class DatabaseAlreadyExist(XdbException):
     pass
 
-class DatabaseAlreadyExist(MyException):
+class DatabaseNotExist(XdbException):
     pass
 
-class DatabaseNotExist(MyException):
+class NoDatabaseInUse(XdbException):
     pass
 
-class NoDatabaseInUse(MyException):
+class CheckAnyUniqueError(XdbException):
     pass
 
-class CheckAnyUniqueError(MyException):
+class DuplicatedPrimaryKeyError(XdbException):
     pass
 
-class DuplicatedPrimaryKeyError(MyException):
+class DuplicatedUniqueKeyError(XdbException):
     pass
 
-class DuplicatedUniqueKeyError(MyException):
+class MissForeignKeyError(XdbException):
     pass
 
-class MissForeignKeyError(MyException):
+class SameNameError(XdbException):
     pass
 
-class SameNameError(MyException):
+class SelectError(XdbException):
     pass
 
-class SelectError(MyException):
+class DateValueError(XdbException):
     pass
 
-class DateValueError(MyException):
+class JoinError(XdbException):
     pass
 
-class JoinError(MyException):
+class AddForeignError(XdbException):
     pass
 
-class AddForeignError(MyException):
+class RemoveError(XdbException):
     pass
 
-class RemoveError(MyException):
-    pass
-
-class AddError(MyException):
+class AddError(XdbException):
     pass

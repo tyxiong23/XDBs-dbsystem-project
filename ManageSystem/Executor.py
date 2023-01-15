@@ -1,5 +1,5 @@
 from OutputSystem.basicClass.outputUnit import LookupOutput
-from Exceptions.exception import MyException
+from Exceptions.exception import XdbException
 from .system_manager import SystemManger
 
 from pathlib import Path
@@ -50,7 +50,7 @@ class Executor:
         if func:
             try:
                 return func(manager, path, dbname, tbname)
-            except MyException as e:
+            except XdbException as e:
                 timeCost = manager.visitor.get_time_delta()
                 return [LookupOutput(message=str(e), cost=timeCost)]
         timeCost = manager.visitor.get_time_delta()

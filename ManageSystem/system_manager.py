@@ -126,7 +126,7 @@ class SystemManger:
         try:
             ret = self.visitor.visit(tree)
             return ret
-        except MyException as e:
+        except XdbException as e:
             ret = LookupOutput(message=str(e), cost=self.visitor.get_time_delta())
             return [ret]
 
